@@ -13,9 +13,14 @@ scipy = "*"
 torchsummary = "*"
 tqdm = "*"
 pytest = "*"
+librosa = "*"
+mutagen = "*"
+torchaudio = "*"
 
 [dev-packages]
 pylint = "*"
+isort = "*"
+librosa = "*"
 
 [requires]
 python_version = "3.8"

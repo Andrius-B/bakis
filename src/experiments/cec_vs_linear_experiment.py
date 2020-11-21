@@ -1,16 +1,17 @@
 from src.runners.abstract_runner import AbstractRunner
 from src.experiments.base_experiment import BaseExperiment 
 from src.runners.run_parameters import RunParameters
+from src.runners.run_parameter_keys import R
 from src.models.res_net_akamaster import *
 
 class CECvsLinearExperiment(BaseExperiment):
 
     def get_experiment_default_parameters(self):
         return {
-            'dataset_name': 'cifar-100',
-            'epochs': '50',
-            'num_classes': '100',
-            'measurements': 'loss, accuracy',
+            R.DATASET_NAME: 'cifar-100',
+            R.EPOCHS: '50',
+            R.NUM_CLASSES: '100',
+            R.MEASUREMENTS: 'loss, accuracy',
         }
 
     def run(self):

@@ -1,6 +1,7 @@
 from typing import Dict
 import logging
-from .dataset_provider import DatasetProvider
+from src.datasets.dataset_provider import DatasetProvider
+from .run_parameter_keys import RunParameterKey, R
 
 logger = logging.getLogger(__name__)
 
@@ -32,37 +33,49 @@ class RunParameters:
     """
     def __init__(self, dataset_name):
         self.all_params = {
-            'dataset_name': dataset_name
+            R.DATASET_NAME: dataset_name
         }
         self.defaulted_params = {}
 
     def set(self, key: str, value: str):
+        if not isinstance(key, RunParameterKey):
+            raise Exception(f'Run parameter key is not an instance of RunParameterKey: {key}')
         self.all_params[key] = value
 
     def get(self, key) -> str:
+        if not isinstance(key, RunParameterKey):
+            raise Exception(f'Run parameter key is not an instance of RunParameterKey: {key}')
         if key in self.all_params:
             return self.all_params[key] 
         raise Exception(f"No such param found and no default provided for: {key}")
 
     def getd(self, key, default) -> str:
+        if not isinstance(key, RunParameterKey):
+            raise Exception(f'Run parameter key is not an instance of RunParameterKey: {key}')
         if key in self.all_params:
             return self.all_params[key] 
         self.defaulted_params[key] = default
         return default
     
     def get_dataset_name(self):
-        return self.all_params['dataset_name']
+        return self.all_params[R.DATASET_NAME]
 
     def validate_params(self):
-        if(self.all_params['training_validation_mode'] not in ['batch', 'epoch', 'finished', 'never']):
-            raise Exception(f'invalid training validation mode: {self.all_params["training_validation_mode"]}')
-        assert self.all_params['lr'] != None
+        logger.info("Validating parameters..")
+        if(self.all_params[R.TRAINING_VALIDATION_MODE] not in ['batch', 'epoch', 'finished', 'never']):
+            raise Exception(f'invalid training validation mode: {self.all_params[R.TRAINING_VALIDATION_MODE]}')
+        assert self.all_params[R.LR] != None
+        for k in self.all_params:
+            if not isinstance(k, RunParameterKey):
+                 raise Exception(f'Run parameter key is not an instance of RunParameterKey: {k} -> {self.all_params[k]}')
     
-    def apply_overrides(self, overrides: Dict[str, str]):
+    def apply_overrides(self, overrides: Dict[RunParameterKey, str]):
         if overrides == None:
             logger.warn("Tried to apply None parameter overrides!")
             return
         for param in overrides:
+            if not isinstance(param, RunParameterKey):
+                raise Exception(f'Run parameter key is not an instance of RunParameterKey: {param}')
             if param in self.all_params:
                 logger.info(f"""Overriding run parameter {param}:
                 \t{self.all_params[param]} -> {overrides[param]}""")

@@ -3,6 +3,10 @@ import logging
 from .cec_vs_linear_experiment import CECvsLinearExperiment
 from .hyperparameter_searcher_experiment import HyperParameterSearcherExperiment
 from .oneshot_learning_experiment import CecOneshotTrainingExperiment
+from .tester import Tester
+from .disk_ds_learner import DiskDsLearner
+from .window_to_spectro import WindowToSpectro
+from .sqlite_ds_learner import SQLiteDsLearner
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +16,11 @@ class ExperimentRegistry:
         self.experiments = {
             'cec-lin-cifar': CECvsLinearExperiment,
             'hyper-searcher': HyperParameterSearcherExperiment,
-            'oneshot': CecOneshotTrainingExperiment
+            'oneshot': CecOneshotTrainingExperiment,
+            'tester': Tester,
+            'disk-ds-learner': DiskDsLearner,
+            'spectro-precompute': WindowToSpectro,
+            'sqlite-ds-learner': SQLiteDsLearner
         }
 
     def run_experiment(self, experiment_name: str, parameter_overrides: Dict[str, str]):

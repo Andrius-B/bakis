@@ -6,8 +6,9 @@ import os
 import datetime
 import logging
 
+from src.runners.run_parameter_keys import R
 from .run_parameters import RunParameters
-from .dataset_provider import DatasetProvider
+from src.datasets.dataset_provider import DatasetProvider
 from src.config import Config
 
 
@@ -28,10 +29,11 @@ class AbstractRunner:
         self.dataset_provider = dataset_provider
         self.config = Config()
         self.writer = SummaryWriter(self.find_log_folder(tensorboard_prefix), str(datetime.datetime.now()))
+        self.validate_params()
         
 
     def train(self):
-        train_l, train_bs, valid_l, valid_bs = self.dataset_provider.get_datasets(self.run_params.get_dataset_name())
+        train_l, train_bs, valid_l, valid_bs = self.dataset_provider.get_datasets(self.run_params)
         self.writer.add_text('model', str(self.model))
         self.writer.add_text('hyper_parameters', str(self.run_params.all_params))
         if(self.run_params.getd('test_with_one_sample', 'False') == 'True'):
@@ -43,10 +45,10 @@ class AbstractRunner:
         # ////////////////////////////////////////////
         optimizer = self.create_optimizer()
         criterion = self.create_criterion().to(self.config.run_device)
-        epochs_count = int(self.run_params.getd('epochs', 10))
+        epochs_count = int(self.run_params.getd(R.EPOCHS, 10))
         logger.warn(f"Using: {epochs_count} epochs")
         print(self.run_params.all_params)
-        measures = self.run_params.getd('measurements', 'loss')
+        measures = self.run_params.getd(R.MEASUREMENTS, 'loss')
         measures = [x.strip() for x in measures.split(',')]
         self.model.to(self.config.run_device)
         iteration = 0
@@ -100,9 +102,9 @@ class AbstractRunner:
         self.dataset_provider.is_valid_dataset(self.run_params.get_dataset_name())
 
     def create_optimizer(self) -> torch:
-        optimType = self.run_params.getd('optimizer', 'adam')
-        lr = float(self.run_params.getd('lr', 1e-3))
-        wd = float(self.run_params.getd('weight_decay', 0))
+        optimType = self.run_params.getd(R.OPTIMIZER, 'adam')
+        lr = float(self.run_params.getd(R.LR, 1e-3))
+        wd = float(self.run_params.getd(R.WEIGHT_DECAY, 0))
 
         optim = None
         if(optimType == 'adam'):
@@ -114,7 +116,7 @@ class AbstractRunner:
         return optim
     
     def create_criterion(self):
-        criterionType = self.run_params.getd('criterion', 'crossentropy')
+        criterionType = self.run_params.getd(R.CRITERION, 'crossentropy')
         if criterionType == 'crossentropy':
             return nn.CrossEntropyLoss()
         elif criterionType == 'mse':

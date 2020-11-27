@@ -34,14 +34,15 @@ class AudioRunner(AbstractRunner):
         self.dataset_provider = dataset_provider
         self.config = Config()
         self.writer = SummaryWriter(self.find_log_folder(tensorboard_prefix), str(datetime.datetime.now()))
+        self.train_l, self.train_bs, self.valid_l, self.valid_bs = self.dataset_provider.get_datasets(self.run_params)
+
         
 
     def train(self):
-        train_l, train_bs, valid_l, valid_bs = self.dataset_provider.get_datasets(self.run_params)
         self.writer.add_text('model', str(self.model))
         self.writer.add_text('hyper_parameters', str(self.run_params.all_params))
         if(self.run_params.getd(R.TEST_WITH_ONE_SAMPLE, 'False') == 'True'):
-            dataiter = iter(train_l)
+            dataiter = iter(self.train_l)
             dx, dy = dataiter.next()
             self.test_with_one_sample(dx, dy)
 
@@ -77,7 +78,7 @@ class AudioRunner(AbstractRunner):
             record_loss = 'loss' in measures
             record_acc = 'accuracy' in measures
             metrics = {}
-            pbar = tqdm(enumerate(train_l, 0), total=len(train_l), leave=True)
+            pbar = tqdm(enumerate(self.train_l, 0), total=len(self.train_l), leave=True)
             for i, data in pbar:
                 samples = data["samples"]
 
@@ -122,9 +123,13 @@ class AudioRunner(AbstractRunner):
                 self.writer.add_scalars('train_metrics', metrics, global_step=iteration)
                 iteration += 1
                 # print statistics
-                
-                pbar.set_description(f'[{epoch + 1}, {i + 1:03d}] loss: {running_loss/(i+1):.3f} | acc: {predicted_correctly/predicted_total:.3%}')
-            self.get_validation_accuracy(self.model, valid_l, self.config)
+                training_summary = f'[{epoch + 1}, {i + 1:03d}] loss: {running_loss/(i+1):.3f} | acc: {predicted_correctly/predicted_total:.3%}'
+                pbar.set_description(training_summary)
+                if i == len(pbar) - 1:
+                    k = 5
+                    top_one, top_k = self.get_validation_accuracy(self.model, self.valid_l, self.config, topn = k)
+                    validation_summary = f"validation acc: top-1={top_one:.3%} top-{k}={top_k:.3%}"
+                    pbar.set_description(f"{training_summary} | {validation_summary}")
             torch.save(self.model.state_dict(), "net.pth")
         print('Finished Training')
 
@@ -132,7 +137,13 @@ class AudioRunner(AbstractRunner):
         logger.info("Should run test with a single sample..")
         logger.info(f"Shape of the sample input: {dx.shape} and sample output: {dy.shape}")
 
-    def get_validation_accuracy(self, net: nn.Module, valid_loader: DataLoader, config: Config, topn:int = 5) -> Tuple[float, float]:
+    def get_validation_accuracy(
+        self,
+        net: nn.Module,
+        valid_loader: DataLoader,
+        config: Config,
+        topn:int = 5,
+    ) -> Tuple[float, float]:
         net.train(mode=False)
         predicted_correctly = 0
         predicted_total = 0
@@ -146,9 +157,8 @@ class AudioRunner(AbstractRunner):
         mel_t = torchaudio.transforms.MelScale(n_mels=129, sample_rate=44100).to(config.run_device)
         norm_t = torchaudio.transforms.ComplexNorm(power=2).to(config.run_device)
         ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(config.run_device)
-
         pbar2 = tqdm(enumerate(valid_loader), total=num_batches, leave=False)
-        for i, data in pbar2:
+        for _, data in pbar2:
             
             samples = data["samples"]
 
@@ -184,8 +194,11 @@ class AudioRunner(AbstractRunner):
             correct_predictions_in_batch = (diff == 0).sum().item()
             predicted_total += len(target)
             predicted_correctly += correct_predictions_in_batch
-            pbar2.set_description(f"running validation accuracy: TOP-1:{predicted_correctly/predicted_total:.3%}, TOP-{topn}:{predicted_correctly_topk/predicted_total:.3%}")
+            validation_summary = f"running validation accuracy: TOP-1:{predicted_correctly/predicted_total:.3%}, TOP-{topn}:{predicted_correctly_topk/predicted_total:.3%}"
+            pbar2.set_description(validation_summary)
             # if(i > 5):
             #     break
         pbar2.close()
-        return (predicted_correctly/predicted_total, predicted_correctly_topk/predicted_total)
+        top_one_acc = predicted_correctly/predicted_total
+        topk_acc = predicted_correctly_topk/predicted_total
+        return (top_one_acc, topk_acc)

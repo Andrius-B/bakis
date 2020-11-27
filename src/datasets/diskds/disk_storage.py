@@ -152,11 +152,6 @@ class DiskStorage:
             yield window
 
     def get_audio_file_paths(self):
-        if(self._file_count > 0):
-            # cache the file list
-            log.info("Using cached file array as it is not empty")
-            for f in self._file_array:
-                yield f
         self._file_count = 0
         self._file_array = []
         for root, directory, files in os.walk(self._root_dir):

@@ -16,6 +16,7 @@ pytest = "*"
 librosa = "*"
 mutagen = "*"
 torchaudio = "*"
+pandas = "*"
 
 [dev-packages]
 pylint = "*"

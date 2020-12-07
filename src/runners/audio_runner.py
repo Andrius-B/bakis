@@ -157,48 +157,49 @@ class AudioRunner(AbstractRunner):
         mel_t = torchaudio.transforms.MelScale(n_mels=129, sample_rate=44100).to(config.run_device)
         norm_t = torchaudio.transforms.ComplexNorm(power=2).to(config.run_device)
         ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(config.run_device)
-        pbar2 = tqdm(enumerate(valid_loader), total=num_batches, leave=False)
-        for _, data in pbar2:
-            
-            samples = data["samples"]
+        with torch.no_grad():
+            pbar2 = tqdm(enumerate(valid_loader), total=num_batches, leave=False)
+            for _, data in pbar2:
+                
+                samples = data["samples"]
 
-            samples = samples.to(self.config.run_device)
-            spectrogram = spectrogram_t(samples)
-            spectrogram = spectrogram.narrow(3, 0, 129)
-            # print(f"Spectrogram after slowing down: {spectrogram.shape}")
-            spectrogram = norm_t(spectrogram)
-            spectrogram = mel_t(spectrogram)
-            spectrogram = ampToDb_t(spectrogram)
+                samples = samples.to(self.config.run_device)
+                spectrogram = spectrogram_t(samples)
+                spectrogram = spectrogram.narrow(3, 0, 129)
+                # print(f"Spectrogram after slowing down: {spectrogram.shape}")
+                spectrogram = norm_t(spectrogram)
+                spectrogram = mel_t(spectrogram)
+                spectrogram = ampToDb_t(spectrogram)
 
-            labels = data["onehot"]
-            labels = labels.to(self.config.run_device)
+                labels = data["onehot"]
+                labels = labels.to(self.config.run_device)
 
-            # forward + backward + optimize
-            output = self.model(spectrogram).detach()
-            yb = labels.to(config.run_device).detach()
+                # forward + backward + optimize
+                output = self.model(spectrogram).detach()
+                yb = labels.to(config.run_device).detach()
 
-            cats = output
-            top_cats = cats.topk(topn)
-            target_expanded = yb.expand_as(top_cats.indices).detach()
-            topk_correct = target_expanded.eq(top_cats.indices)
-            # print("==============")
-            # print(f"Cats shape: {cats.shape}")
-            # print(f"top_cats shape: {top_cats.indices}")
-            # print(f"Target: {target_expanded}")
-            # print(f"Categories equal: {topk_correct}")
-            # print(f"TOP-N correct in batch: {topk_correct.sum()}")
-            predicted_correctly_topk += topk_correct.sum().item()
-            output_cat = torch.argmax(output, dim=1)
-            target = yb.detach().view(-1)
-            diff = (target - output_cat).detach()
-            correct_predictions_in_batch = (diff == 0).sum().item()
-            predicted_total += len(target)
-            predicted_correctly += correct_predictions_in_batch
-            validation_summary = f"running validation accuracy: TOP-1:{predicted_correctly/predicted_total:.3%}, TOP-{topn}:{predicted_correctly_topk/predicted_total:.3%}"
-            pbar2.set_description(validation_summary)
-            # if(i > 5):
-            #     break
-        pbar2.close()
+                cats = output
+                top_cats = cats.topk(topn)
+                target_expanded = yb.expand_as(top_cats.indices).detach()
+                topk_correct = target_expanded.eq(top_cats.indices)
+                # print("==============")
+                # print(f"Cats shape: {cats.shape}")
+                # print(f"top_cats shape: {top_cats.indices}")
+                # print(f"Target: {target_expanded}")
+                # print(f"Categories equal: {topk_correct}")
+                # print(f"TOP-N correct in batch: {topk_correct.sum()}")
+                predicted_correctly_topk += topk_correct.sum().item()
+                output_cat = torch.argmax(output, dim=1)
+                target = yb.detach().view(-1)
+                diff = (target - output_cat).detach()
+                correct_predictions_in_batch = (diff == 0).sum().item()
+                predicted_total += len(target)
+                predicted_correctly += correct_predictions_in_batch
+                validation_summary = f"running validation accuracy: TOP-1:{predicted_correctly/predicted_total:.3%}, TOP-{topn}:{predicted_correctly_topk/predicted_total:.3%}"
+                pbar2.set_description(validation_summary)
+                # if(i > 5):
+                #     break
+            pbar2.close()
         top_one_acc = predicted_correctly/predicted_total
         topk_acc = predicted_correctly_topk/predicted_total
         return (top_one_acc, topk_acc)

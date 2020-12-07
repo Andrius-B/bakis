@@ -17,6 +17,8 @@ librosa = "*"
 mutagen = "*"
 torchaudio = "*"
 pandas = "*"
+coloredlogs = "*"
+plotly = "*"
 
 [dev-packages]
 pylint = "*"

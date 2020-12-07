@@ -36,7 +36,7 @@ class AbstractRunner:
         train_l, train_bs, valid_l, valid_bs = self.dataset_provider.get_datasets(self.run_params)
         self.writer.add_text('model', str(self.model))
         self.writer.add_text('hyper_parameters', str(self.run_params.all_params))
-        if(self.run_params.getd('test_with_one_sample', 'False') == 'True'):
+        if(self.run_params.getd(R.TEST_WITH_ONE_SAMPLE, 'False') == 'True'):
             dataiter = iter(train_l)
             dx, dy = dataiter.next()
             self.test_with_one_sample(dx, dy)

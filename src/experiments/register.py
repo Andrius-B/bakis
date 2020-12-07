@@ -7,7 +7,7 @@ from .tester import Tester
 from .disk_ds_learner import DiskDsLearner
 from .window_to_spectro import WindowToSpectro
 from .sqlite_ds_learner import SQLiteDsLearner
-
+from .audio_analyze_experiment import AudioAnalyzeExperiment
 logger = logging.getLogger(__name__)
 
 class ExperimentRegistry:
@@ -19,6 +19,7 @@ class ExperimentRegistry:
             'oneshot': CecOneshotTrainingExperiment,
             'tester': Tester,
             'disk-ds-learner': DiskDsLearner,
+            'audio-analyze': AudioAnalyzeExperiment,
             'spectro-precompute': WindowToSpectro,
             'sqlite-ds-learner': SQLiteDsLearner
         }

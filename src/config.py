@@ -1,6 +1,7 @@
 import torch
 import logging
 import torchaudio
+import coloredlogs
 
 class Config:
     def __init__(
@@ -13,4 +14,5 @@ class Config:
         self.dataset_device = dataset_device
         # on which device should the model be placed / train or test samples moved to ?
         self.run_device = run_device
-        logging.basicConfig(level=logging.INFO)
+        # logging.basicConfig(level=logging.INFO)
+        coloredlogs.install(fmt='%(asctime)s %(levelname)s %(message)s')

@@ -33,7 +33,7 @@ class DiskDsProvider:
             window_generation_strategy=generation_strategy
         )
         log.info("Creating validation dataset..")
-        valid_sampling_strategy = UniformReadWindowGenerationStrategy(window_len=w_len, window_hop=(2**16)*10, overread=1.09)
+        valid_sampling_strategy = UniformReadWindowGenerationStrategy(window_len=w_len, window_hop=(2**16)*20, overread=1.09)
         valid_ds = DiskDataset(
             path,
             file_limit=num_files,

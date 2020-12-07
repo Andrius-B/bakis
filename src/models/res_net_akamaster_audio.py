@@ -45,12 +45,20 @@ class LambdaLayer(nn.Module):
     def forward(self, x):
         return self.lambd(x)
 
+class AShortcut(nn.Module):
+    def __init__(self, planes):
+        super().__init__()
+        self.planes = planes
+    def forward(self, x):
+        return F.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, self.planes//4, self.planes//4), "constant", 0)
+
 
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, option='A'):
+    def __init__(self, in_planes, planes, stride=1, option='A', output_activation=True):
         super(BasicBlock, self).__init__()
+        self.use_output_activation = output_activation
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
@@ -62,8 +70,7 @@ class BasicBlock(nn.Module):
                 """
                 For CIFAR10 ResNet paper uses option A.
                 """
-                self.shortcut = LambdaLayer(lambda x:
-                                            F.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
+                self.shortcut = AShortcut(planes)
             elif option == 'B':
                 self.shortcut = nn.Sequential(
                      nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
@@ -74,7 +81,8 @@ class BasicBlock(nn.Module):
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         out += self.shortcut(x)
-        out = F.relu(out)
+        if self.use_output_activation:
+            out = F.relu(out)
         return out
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
@@ -90,15 +98,13 @@ def conv1x1(in_planes, out_planes, stride=1):
 class BottleNeckBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, option='A', conv_divider = 4, groups = 1):
+    def __init__(self, in_planes, planes, stride=1, option='A', conv_divider = 1, groups = 1, output_activation=True):
         super(BottleNeckBlock, self).__init__()
-        # self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
-        # self.bn1 = nn.BatchNorm2d(planes)
-        # self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-        # self.bn2 = nn.BatchNorm2d(planes)
+
+        self.use_output_activation = output_activation
         norm_layer = nn.BatchNorm2d
         width = int(planes / conv_divider) * groups
-
+        
         self.conv1 = conv1x1(in_planes, width)
         self.bn1 = norm_layer(width, momentum=0.1)
         self.conv2 = conv3x3(width, width, stride, groups, 1)
@@ -107,14 +113,12 @@ class BottleNeckBlock(nn.Module):
         self.bn3 = norm_layer(planes * self.expansion, momentum=0.1)
         self.relu = nn.ReLU(inplace=True)
 
-        self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != planes:
             if option == 'A':
                 """
                 For CIFAR10 ResNet paper uses option A.
                 """
-                self.shortcut = LambdaLayer(lambda x:
-                                            F.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
+                self.shortcut = AShortcut(planes)
             elif option == 'B':
                 self.shortcut = nn.Sequential(
                      nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
@@ -138,6 +142,8 @@ class BottleNeckBlock(nn.Module):
             identity = self.shortcut(x)
 
         out += identity
+        if(self.use_output_activation):
+            out = F.relu(out)
         out = self.relu(out)
         return out
 
@@ -195,8 +201,12 @@ class ResNet(nn.Module):
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
         layers = []
-        for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
+        for i, stride in enumerate(strides):
+            if(i == len(strides) - 1):
+                # we want to skip the RELU in the last block, because the classification part of the network does it anyway.
+                layers.append(block(self.in_planes, planes, stride, output_activation=False))
+            else:
+                layers.append(block(self.in_planes, planes, stride, output_activation=True))
             self.in_planes = planes * block.expansion
 
         return nn.Sequential(*layers)
@@ -225,10 +235,13 @@ class ResNet(nn.Module):
     def make_classification(self, use_ceclustering):
         if use_ceclustering:
             return nn.Sequential(
-                nn.Linear(64, self.ce_dim_count),
+                # nn.Sigmoid(),
+                # nn.Linear(64, self.ce_dim_count),
+
                 nn.Sigmoid(),
                 CEClustering(
-                    n_dim=self.ce_dim_count,
+                    # n_dim=self.ce_dim_count,
+                    n_dim=64,
                     n_clusters=self.num_classes,
                     init_radius=self.ce_init_radius
                 ),
@@ -253,19 +266,33 @@ def resnet20(
         )
 
 
-def resnet32(ceclustering=True, num_classes = 10) -> ResNet:
+def resnet32(
+    ceclustering=True,
+    num_classes = 10,
+    init_radius = 0.4,
+    ce_n_dim = 5,
+    ) -> ResNet:
     return ResNet(
-        BasicBlock, [5, 5, 5, 5, 5],
+        BottleNeckBlock, [5, 5, 5, 5, 5],
         use_ceclustering=ceclustering,
-        num_classes = num_classes
+        num_classes = num_classes,
+        ce_init_radius = init_radius,
+        ce_dim_count=ce_n_dim
         )
 
 
-def resnet44(ceclustering=True, num_classes = 10) -> ResNet:
+def resnet44(
+    ceclustering=True,
+    num_classes = 10,
+    init_radius = 0.4,
+    ce_n_dim = 5,
+    ) -> ResNet:
     return ResNet(
-        BasicBlock, [7, 7, 7, 7, 7],
+        BottleNeckBlock, [7, 7, 7, 7, 7],
         use_ceclustering=ceclustering,
-        num_classes = num_classes
+        num_classes = num_classes,
+        ce_init_radius = init_radius,
+        ce_dim_count=ce_n_dim
         )
 
 
@@ -276,7 +303,7 @@ def resnet56(
     ce_n_dim = 5
     ) -> ResNet:
     return ResNet(
-        BasicBlock, [9, 9, 9, 9, 9],
+        BottleNeckBlock, [9, 9, 9, 9, 9],
         use_ceclustering=ceclustering,
         num_classes = num_classes,
         ce_init_radius = init_radius,
@@ -284,10 +311,19 @@ def resnet56(
         )
 
 
-def resnet110(ceclustering=True, num_classes = 10):
+def resnet110(
+    ceclustering = True,
+    num_classes = 10,
+    init_radius = 0.4,
+    ce_n_dim = 5
+    ) -> ResNet:
     return ResNet(
-        BasicBlock, [18, 18, 18, 18, 18],
-        use_ceclustering=ceclustering, num_classes = num_classes)
+        BottleNeckBlock, [18, 18, 18, 18, 18],
+        use_ceclustering=ceclustering,
+        num_classes = num_classes,
+        ce_init_radius = init_radius,
+        ce_dim_count=ce_n_dim,
+        )
 
 
 def resnet1202(ceclustering=True, num_classes = 10):

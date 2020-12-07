@@ -1,4 +1,6 @@
 import logging
+import os
+import torch
 from torchsummary import summary
 from src.runners.audio_runner import AudioRunner
 from src.experiments.base_experiment import BaseExperiment 
@@ -15,11 +17,11 @@ class DiskDsLearner(BaseExperiment):
         return {
             R.DATASET_NAME: 'disk-ds(/home/andrius/git/bakis/data/spotifyTop10000)',
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '10',
-            R.NUM_CLASSES: '10',
-            R.BATCH_SIZE_TRAIN: '50',
-            R.EPOCHS: '150',
-            R.BATCH_SIZE_VALIDATION: '50',
+            R.DISKDS_NUM_FILES: '100',
+            R.NUM_CLASSES: '100',
+            R.BATCH_SIZE_TRAIN: '25',
+            R.EPOCHS: '40',
+            R.BATCH_SIZE_VALIDATION: '20',
             R.TRAINING_VALIDATION_MODE: 'epoch',
             R.LR: '1e-3'
         }
@@ -28,19 +30,30 @@ class DiskDsLearner(BaseExperiment):
         ce_clustering_loader = CEClusteringModelLoader()
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
-        num_classes = int(run_params.getd(R.NUM_CLASSES, '10'))
-        net = resnet20(ceclustering=True, num_classes=num_classes, ce_n_dim=5)
+        num_classes = int(run_params.getd(R.NUM_CLASSES, '-1'))
+        model = resnet56(ceclustering=True, num_classes=num_classes, ce_n_dim=5)
+        net_save_path = "temp.pth"
+        cec_save_path = "temp.csv"
+        if(os.path.isfile(net_save_path)):
+            logging.info(f"Using saved model from: {net_save_path}")
+            model = torch.load(net_save_path)
+        # this loader generation consumes quite a bit of memory because it regenerates
+        # all the idx's for the train set, maybe this would make sense to make DiskDsProvider
+        # stateful and able to list all files (by calling a static method on disk_storage..)
         train_l, train_bs, valid_l, valid_bs = DatasetProvider().get_datasets(run_params)
         # here the train dataset has the file list we are interested in..
         file_list = train_l.dataset.get_file_list()
-        ce_clustering_loader.save(net.classification[-2], "temp.dat", file_list)
-        
-        # net.to("cuda")
-        # summary(net, (1, 129, 129))
+        ceclustring = model.classification[-2]
+        ceclustring = ce_clustering_loader.load(ceclustring, cec_save_path, file_list)
+        model.classification[-2] = ceclustring
+        model.to("cuda")
+        summary(model, (1, 129, 129))
 
-        # runner = AudioRunner(net, run_params, tensorboard_prefix='diskds')
-        # log.info("Runner initialized, starting train")
-        # runner.train()
+        runner = AudioRunner(model, run_params, tensorboard_prefix='diskds')
+        log.info("Runner initialized, starting train")
+        runner.train()
+        torch.save(model, net_save_path)
+        ce_clustering_loader.save(ceclustring, cec_save_path, file_list)
         
 
     def help_str(self):

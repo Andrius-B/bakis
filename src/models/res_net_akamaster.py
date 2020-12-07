@@ -135,10 +135,10 @@ class ResNet(nn.Module):
     def make_classification(self, use_ceclustering):
         if use_ceclustering:
             return nn.Sequential(
-                nn.Linear(64, self.ce_dim_count),
+                # nn.Linear(64, self.ce_dim_count),
                 nn.Sigmoid(),
                 CEClustering(
-                    n_dim=self.ce_dim_count,
+                    n_dim=64,
                     n_clusters=self.num_classes,
                     init_radius=self.ce_init_radius
                 ),

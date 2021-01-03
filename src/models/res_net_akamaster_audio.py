@@ -174,37 +174,31 @@ class ResNet(nn.Module):
             num_blocks,
             use_ceclustering=True,
             num_classes=10,
-            ce_init_radius = 0.4,
-            ce_dim_count = 5
+            ce_dim_count = 5,
+            ce_init_radius = 0.1,
         ):
         super(ResNet, self).__init__()
-        self.in_planes = 16
+        self.groupMult = 3 # multiplier for each block width -- increases parameters sinificantly
+        self.in_planes = 16 * self.groupMult
         self.num_classes= num_classes
-        self.ce_init_radius = ce_init_radius
         self.ce_dim_count = ce_dim_count
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
-        self.classification = self.make_classification(use_ceclustering)
-        # self.classification = nn.Linear(64, 10)
-        # self.classification = nn.Sequential(
-        #     nn.Linear(64, 5),
-        #     nn.Sigmoid(),
-        #     CEClustering(5, num_classes),
-        #     nn.Sigmoid()
-        # )
+        self.conv1 = nn.Conv2d(1, 16 * self.groupMult, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(16 * self.groupMult)
+        self.layer1 = self._make_layer(block, 16 * self.groupMult, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 32 * self.groupMult, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 64 * self.groupMult, num_blocks[2], stride=2, last_layer_output_activation=False)
+        # self.convOut = conv1x1(64 * self.groupMult, 2)
+        self.classification = self.make_classification(64 * self.groupMult, use_ceclustering)
 
         self.apply(_weights_init)
 
-    def _make_layer(self, block, planes, num_blocks, stride):
+    def _make_layer(self, block, planes, num_blocks, stride, last_layer_output_activation = True):
         strides = [stride] + [1]*(num_blocks-1)
         layers = []
         for i, stride in enumerate(strides):
             if(i == len(strides) - 1):
                 # we want to skip the RELU in the last block, because the classification part of the network does it anyway.
-                layers.append(block(self.in_planes, planes, stride, output_activation=False))
+                layers.append(block(self.in_planes, planes, stride, output_activation=last_layer_output_activation))
             else:
                 layers.append(block(self.in_planes, planes, stride, output_activation=True))
             self.in_planes = planes * block.expansion
@@ -221,6 +215,7 @@ class ResNet(nn.Module):
         out = self.layer2(out)
         # print(f"after Layer 2: {out.shape}")
         out = self.layer3(out)
+        # out = self.convOut(out) # reduce the amount of features..
         # print(f"after Layer 3: {out.shape}")
         # print(f"Output after resnet: {out.shape}")
         out = F.avg_pool2d(out, out.size()[3])
@@ -232,33 +227,35 @@ class ResNet(nn.Module):
         # out = torch.sigmoid(out)
         return out
     
-    def make_classification(self, use_ceclustering):
+    def make_classification(self, in_features, use_ceclustering):
         if use_ceclustering:
             return nn.Sequential(
                 # nn.Sigmoid(),
-                # nn.Linear(64, self.ce_dim_count),
+                # nn.Linear(in_features, self.ce_dim_count),
 
                 nn.Sigmoid(),
                 CEClustering(
                     # n_dim=self.ce_dim_count,
-                    n_dim=64,
+                    n_dim=in_features,
                     n_clusters=self.num_classes,
-                    init_radius=self.ce_init_radius
+                    # init_radius=self.ce_init_radius
                 ),
-                nn.Sigmoid()
             )
         else:
-            return nn.Linear(64, self.num_classes)
+            return nn.Sequential(
+                nn.Linear(in_features, self.num_classes),
+                nn.Softmax(),
+            )
 
 
 def resnet20(
     ceclustering = True,
     num_classes = 10,
-    init_radius = 0.4,
+    init_radius = 10,
     ce_n_dim = 5,
     ) -> ResNet:
     return ResNet(
-        BottleNeckBlock, [3, 3, 3, 3, 3],
+        BottleNeckBlock, [3, 4, 6, 3],
         use_ceclustering=ceclustering,
         num_classes = num_classes,
         ce_init_radius = init_radius,
@@ -288,7 +285,7 @@ def resnet44(
     ce_n_dim = 5,
     ) -> ResNet:
     return ResNet(
-        BottleNeckBlock, [7, 7, 7, 7, 7],
+        BottleNeckBlock, [7, 7, 7, 7],
         use_ceclustering=ceclustering,
         num_classes = num_classes,
         ce_init_radius = init_radius,
@@ -299,11 +296,11 @@ def resnet44(
 def resnet56(
     ceclustering = True,
     num_classes = 10,
-    init_radius = 0.4,
+    init_radius = 0.2,
     ce_n_dim = 5
     ) -> ResNet:
     return ResNet(
-        BottleNeckBlock, [9, 9, 9, 9, 9],
+        BottleNeckBlock, [3, 4, 6, 3],
         use_ceclustering=ceclustering,
         num_classes = num_classes,
         ce_init_radius = init_radius,

@@ -50,6 +50,8 @@ class R:
 
     DISKDS_NUM_FILES = RunParameterKey("diskds_num_files")
 
-    DISKDS_FEATURES = RunParameterKey("diskds_features")
+    DISKDS_TRAIN_FEATURES = RunParameterKey("diskds_features")
+
+    DISKDS_VALID_FEATURES = RunParameterKey("diskds_features")
 
     DISKDS_FORMATS = RunParameterKey("diskds_formats")

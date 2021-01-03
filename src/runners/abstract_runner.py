@@ -121,6 +121,8 @@ class AbstractRunner:
             return nn.CrossEntropyLoss()
         elif criterionType == 'mse':
             return nn.MSELoss()
+        elif criterionType == 'nll':
+            return nn.NLLLoss()
 
     def test_with_one_sample(self, dx, dy):
         logger.info("Should run test with a single sample..")

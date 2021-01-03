@@ -9,6 +9,7 @@ from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from numba import njit
 import random
+import torchaudio
 from logging import getLogger
 from scipy import signal
 import librosa
@@ -39,6 +40,16 @@ class DiskDataset(BaseDataset):
         self._samples_length_runnging = None
         self._config = config
 
+        self.spectrogram_t = torchaudio.transforms.Spectrogram(
+            n_fft=2048, win_length=2048, hop_length=512, power=None
+        ).to(self._config.dataset_device) # generates a complex spectrogram
+        self.time_stretch_t = torchaudio.transforms.TimeStretch(hop_length=512, n_freq=1025).to(self._config.dataset_device)
+        self.low_pass_t = torchaudio.functional.lowpass_biquad
+        self.high_pass_t = torchaudio.functional.highpass_biquad
+        self.mel_t = torchaudio.transforms.MelScale(n_mels=129, sample_rate=44100).to(self._config.dataset_device)
+        self.norm_t = torchaudio.transforms.ComplexNorm(power=2).to(self._config.dataset_device)
+        self.ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(self._config.dataset_device)
+
     def __len__(self):
         return len(self._idx_list)
 
@@ -60,6 +71,8 @@ class DiskDataset(BaseDataset):
                 samples_flat = item_data["samples"].numpy().reshape((-1))
                 spectrogram = self.generate_mel_spectrogram(samples_flat)
                 item_data = {**item_data, **spectrogram}
+                item_data["samples"] = np.array([]) # reduce the memory footprint
+                item_data["filepath"] = np.array([])
             output = {**output, **item_data}
         if("metadata" in self._features):
             metadata = self.read_item_metadata(window)
@@ -182,20 +195,23 @@ class DiskDataset(BaseDataset):
 
 
     def generate_mel_spectrogram(self, samples):
-        w_len = 2048
-        hop = int(w_len/4)
-        window = signal.windows.triang(w_len)
-        mel_spec = librosa.feature.melspectrogram(samples, sr=44100, n_fft=w_len,
-                                                  hop_length=hop,
-                                                  n_mels=129)
-        mel_spec = librosa.power_to_db(mel_spec, ref=np.max)
-        mel_spec = (mel_spec + np.abs(np.min(mel_spec)))
-        max_elem = np.max(mel_spec)
-        if(max_elem > 0):
-            mel_spec = mel_spec / max_elem
-        # else:
-        #     print(f"Can not generate spectrogram for window! (max element is {np.max(mel_spec)}, min is {np.min(mel_spec)})")
-        return {"spectrogram": torch.tensor(mel_spec)}
+        samples = torch.tensor(samples).to(self._config.dataset_device)
+        samples = samples.reshape((1,-1))
+        # log.info(f"Samples: {samples.shape}")
+        spectrogram = self.spectrogram_t(samples)
+        # log.info(f"Spectrogram: {spectrogram.shape}")
+        if(random.random() > 0.5): # half of the samples get a timestretch
+            # this is because
+            spectrogram = self.time_stretch_t(spectrogram, random.uniform(0.93, 1.07))
+            # log.info(f"Spectrogram stretched: {spectrogram.shape}")
+        spectrogram = spectrogram.narrow(2, 0, 129)
+        # log.info(f"Spectrogram narrowed: {spectrogram.shape}")
+        # print(f"Spectrogram after slowing down: {spectrogram.shape}")
+        spectrogram = self.norm_t(spectrogram)
+        spectrogram = self.mel_t(spectrogram)
+        spectrogram = self.ampToDb_t(spectrogram)
+        # log.info(f"Final spectrogram: {spectrogram.shape}")
+        return {"spectrogram": spectrogram.to(self._config.dataset_device)}
 
 class RandomReadDiskDataset(DiskDataset):
     def __init__(

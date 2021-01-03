@@ -17,13 +17,15 @@ class DiskDsLearner(BaseExperiment):
         return {
             R.DATASET_NAME: 'disk-ds(/home/andrius/git/bakis/data/spotifyTop10000)',
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '100',
-            R.NUM_CLASSES: '100',
-            R.BATCH_SIZE_TRAIN: '25',
-            R.EPOCHS: '40',
-            R.BATCH_SIZE_VALIDATION: '20',
+            R.DISKDS_NUM_FILES: '2000',
+            R.NUM_CLASSES: '2000',
+            R.BATCH_SIZE_TRAIN: '30',
+            R.EPOCHS: '80',
+            R.BATCH_SIZE_VALIDATION: '40',
             R.TRAINING_VALIDATION_MODE: 'epoch',
-            R.LR: '1e-3'
+            R.LR: '1e-3',
+            R.DISKDS_TRAIN_FEATURES: 'data,onehot',
+            R.DISKDS_VALID_FEATURES: 'data,onehot'
         }
 
     def run(self):
@@ -31,7 +33,7 @@ class DiskDsLearner(BaseExperiment):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
         num_classes = int(run_params.getd(R.NUM_CLASSES, '-1'))
-        model = resnet56(ceclustering=True, num_classes=num_classes, ce_n_dim=5)
+        model = resnet56(ceclustering=True, num_classes=num_classes)
         net_save_path = "temp.pth"
         cec_save_path = "temp.csv"
         if(os.path.isfile(net_save_path)):
@@ -43,9 +45,9 @@ class DiskDsLearner(BaseExperiment):
         train_l, train_bs, valid_l, valid_bs = DatasetProvider().get_datasets(run_params)
         # here the train dataset has the file list we are interested in..
         file_list = train_l.dataset.get_file_list()
-        ceclustring = model.classification[-2]
+        ceclustring = model.classification[-1]
         ceclustring = ce_clustering_loader.load(ceclustring, cec_save_path, file_list)
-        model.classification[-2] = ceclustring
+        model.classification[-1] = ceclustring
         model.to("cuda")
         summary(model, (1, 129, 129))
 

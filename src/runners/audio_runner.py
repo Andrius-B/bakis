@@ -80,21 +80,21 @@ class AudioRunner(AbstractRunner):
             metrics = {}
             pbar = tqdm(enumerate(self.train_l, 0), total=len(self.train_l), leave=True)
             for i, data in pbar:
-                samples = data["samples"]
-
-                samples = samples.to(self.config.run_device)
-                spectrogram = spectrogram_t(samples)
-                if(random.random() > 0.5): # half of the samples get a timestretch
-                    # this is because
-                    spectrogram = time_stretch_t(spectrogram, random.uniform(0.93, 1.07))
-                spectrogram = spectrogram.narrow(3, 0, 129)
-                # print(f"Spectrogram after slowing down: {spectrogram.shape}")
-                spectrogram = norm_t(spectrogram)
-                spectrogram = mel_t(spectrogram)
-                spectrogram = ampToDb_t(spectrogram)
-
-                labels = data["onehot"]
-                labels = labels.to(self.config.run_device)
+                with torch.no_grad():
+                    samples = data["samples"]
+                    samples = samples.to(self.config.run_device)
+                    spectrogram = spectrogram_t(samples)
+                    if(random.random() > 0.5): # half of the samples get a timestretch
+                        # this is because
+                        spectrogram = time_stretch_t(spectrogram, random.uniform(0.93, 1.07))
+                    spectrogram = spectrogram.narrow(3, 0, 129)
+                    # print(f"Spectrogram after slowing down: {spectrogram.shape}")
+                    spectrogram = norm_t(spectrogram)
+                    spectrogram = mel_t(spectrogram)
+                    spectrogram = ampToDb_t(spectrogram)
+                    
+                    labels = data["onehot"]
+                    labels = labels.to(self.config.run_device)
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
@@ -105,14 +105,14 @@ class AudioRunner(AbstractRunner):
                 loss = criterion(outputs, labels.view(labels.shape[0],))
                 loss.backward()
                 optimizer.step()
-
-                loss = loss.detach()
-                output_cat = torch.argmax(outputs.detach(), dim=1)
-                labels = labels.view(labels.shape[0],)
-                correct = labels.eq(output_cat).detach()
-                predicted_correctly += correct.sum().item()
-                predicted_total += correct.shape[0]
-                running_loss += loss.item()
+                with torch.no_grad():
+                    loss = loss.detach()
+                    output_cat = torch.argmax(outputs.detach(), dim=1)
+                    labels = labels.view(labels.shape[0],)
+                    correct = labels.eq(output_cat).detach()
+                    predicted_correctly += correct.sum().item()
+                    predicted_total += correct.shape[0]
+                    running_loss += loss.item()
 
                 if record_loss:
                     metrics['loss'] = loss.item()
@@ -126,6 +126,9 @@ class AudioRunner(AbstractRunner):
                 training_summary = f'[{epoch + 1}, {i + 1:03d}] loss: {running_loss/(i+1):.3f} | acc: {predicted_correctly/predicted_total:.3%}'
                 pbar.set_description(training_summary)
                 if i == len(pbar) - 1:
+                    # with torch.no_grad():
+                    #     cluster_sizes = self.model.classification[-1].cluster_sizes
+                    #     pbar.write(f"Median cluster size={torch.median(cluster_sizes)} mean={torch.mean(cluster_sizes)} min={torch.min(cluster_sizes)} max={torch.max(cluster_sizes)}")
                     k = 5
                     top_one, top_k = self.get_validation_accuracy(self.model, self.valid_l, self.config, topn = k)
                     validation_summary = f"validation acc: top-1={top_one:.3%} top-{k}={top_k:.3%}"
@@ -160,9 +163,8 @@ class AudioRunner(AbstractRunner):
         with torch.no_grad():
             pbar2 = tqdm(enumerate(valid_loader), total=num_batches, leave=False)
             for _, data in pbar2:
-                
+                # spectrogram = data["spectrogram"].to(self.config.run_device)
                 samples = data["samples"]
-
                 samples = samples.to(self.config.run_device)
                 spectrogram = spectrogram_t(samples)
                 spectrogram = spectrogram.narrow(3, 0, 129)

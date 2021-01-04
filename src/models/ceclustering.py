@@ -30,18 +30,18 @@ class CEClustering(nn.Module):
         # we need to convert the input point so that we can
         # perform other operations as matrix ops.
         # this makes input into (n, 2) where n is the number of centroids
-        # print(f"Centroids:\n{self.centroids}")
-        # print(f"Radii: \n{self.cluser_sizes}")
+        # print(f"Centroids:\n{self.centroids.shape}")
+        # print(f"Radii: \n{self.cluster_sizes.shape}")
         # print(f"Input:\n{input}")
         num_centroids = self.centroids.shape[0]
         input_repeated = input.repeat((1, num_centroids)).view(-1, num_centroids, self.in_features)
-        # print(f"Input repeated:\n{input_repeated}")
+        # print(f"Input repeated:\n{input_repeated.shape}")
         # input_distances contains:
         # [[dx1, dy1]
         #  [dx2, dy2]] - the distances of input to the centroid
         # print(f"input_rep: {input_repeated.shape} centroids: {self.centroids.shape}")
         input_distances = self.centroids - input_repeated
-        # print(f"Distances:\n{input_distances}")
+        # print(f"Distances:\n{input_distances.shape}")
         # by taking the second norm in dim 1 we get:
         # [
         #   dx1*dx1 + dy1*dy1,
@@ -49,13 +49,13 @@ class CEClustering(nn.Module):
         # ]
         # which is the Euclidean distance of input to each centroid
         input_distances = torch.div(torch.norm(input_distances, p=2, dim=-1), self.max_dist)
-        # print(f"Reduced distances:\n{input_distances}")
+        # print(f"Reduced distances:\n{input_distances.shape}")
         # inverse distance - the closer the better.
         # note to self: I think inverse distance would reinfoce overfitting,
         # so i'm just using max distance in the latent space ~ sqrt(2)
 
         transformed_input_distances = torch.mul(input_distances, torch.div(1, self.cluster_sizes))
-        # print(f"Transformed distances:\n{transformed_input_distances}")
+        # print(f"Transformed distances:\n{transformed_input_distances.shape}")
         distance_probabilities = torch.add(-torch.pow(transformed_input_distances, 2), 1)
-        # print(f"Inverse input distances:\n{distance_probabilities}")
+        # print(f"Inverse input distances:\n{distance_probabilities.shape}")
         return distance_probabilities

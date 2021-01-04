@@ -17,13 +17,14 @@ class DiskDsLearner(BaseExperiment):
         return {
             R.DATASET_NAME: 'disk-ds(/home/andrius/git/bakis/data/spotifyTop10000)',
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '2000',
-            R.NUM_CLASSES: '2000',
-            R.BATCH_SIZE_TRAIN: '30',
-            R.EPOCHS: '80',
+            R.DISKDS_NUM_FILES: '5000',
+            R.NUM_CLASSES: '5000',
+            R.BATCH_SIZE_TRAIN: '150',
+            R.EPOCHS: '100',
             R.BATCH_SIZE_VALIDATION: '40',
             R.TRAINING_VALIDATION_MODE: 'epoch',
             R.LR: '1e-3',
+            R.MEASUREMENTS: 'loss,accuracy',
             R.DISKDS_TRAIN_FEATURES: 'data,onehot',
             R.DISKDS_VALID_FEATURES: 'data,onehot'
         }
@@ -49,7 +50,7 @@ class DiskDsLearner(BaseExperiment):
         ceclustring = ce_clustering_loader.load(ceclustring, cec_save_path, file_list)
         model.classification[-1] = ceclustring
         model.to("cuda")
-        summary(model, (1, 129, 129))
+        summary(model, (1, 64, 64))
 
         runner = AudioRunner(model, run_params, tensorboard_prefix='diskds')
         log.info("Runner initialized, starting train")

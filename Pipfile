@@ -19,6 +19,7 @@ torchaudio = "*"
 pandas = "*"
 coloredlogs = "*"
 plotly = "*"
+flask = "*"
 
 [dev-packages]
 pylint = "*"
@@ -26,4 +27,4 @@ isort = "*"
 librosa = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.9"

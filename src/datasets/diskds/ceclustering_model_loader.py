@@ -42,7 +42,7 @@ the provided file list. It will be resized to match the required size."""
                 row = df.loc[df[CEClusteringModelLoader.FILEPATH] == f]
                 cluster_size = torch.tensor(float(row[CEClusteringModelLoader.CLUSTER_SIZE]))
                 centroid_pos = torch.tensor(np.array(eval(list(row[CEClusteringModelLoader.CENTROID_POSITION])[0])))
-                logger.info(f"Centroid size: {cluster_size} pos: {centroid_pos} file: {f}")
+                # logger.info(f"Centroid size: {cluster_size} pos: {centroid_pos} file: {f}")
                 model.cluster_sizes[i] = cluster_size
                 model.centroids[i] = centroid_pos
             # print(df)

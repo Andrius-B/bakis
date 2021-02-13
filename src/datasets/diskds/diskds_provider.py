@@ -27,7 +27,7 @@ class DiskDsProvider:
         formats_str = run_params.getd(R.DISKDS_FORMATS, ".flac,.mp3")
         formats = [x.strip() for x in formats_str.split(",")]
         log.info(f"Loading disk dataset from {path}")
-        generation_strategy = RandomSubsampleWindowGenerationStrategy(window_len=w_len, average_hop=(2**16)*6, overread=1.08)
+        generation_strategy = RandomSubsampleWindowGenerationStrategy(window_len=w_len, average_hop=(2**16)*1000, overread=1.08)
         # generation_strategy = UniformReadWindowGenerationStrategy(window_len=w_len, window_hop=(2**16)*10)
         log.info("Creating train dataset..")
         train_ds = DiskDataset(
@@ -38,7 +38,7 @@ class DiskDsProvider:
             window_generation_strategy=generation_strategy
         )
         log.info("Creating validation dataset..")
-        valid_sampling_strategy = UniformReadWindowGenerationStrategy(window_len=w_len, window_hop=(2**16)*24, overread=1.09)
+        valid_sampling_strategy = UniformReadWindowGenerationStrategy(window_len=w_len, window_hop=(2**16)*1000, overread=1.09)
         valid_ds = DiskDataset(
             path,
             file_limit=num_files,

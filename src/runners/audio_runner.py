@@ -92,6 +92,17 @@ class AudioRunner(AbstractRunner):
                     spectrogram = norm_t(spectrogram)
                     spectrogram = mel_t(spectrogram)
                     spectrogram = ampToDb_t(spectrogram)
+                    # apply frequency masking
+                    if(random.random() < 0.5):
+                    # highpass type mask:
+                        bins_to_mask = random.randint(0,40) 
+                        spectrogram[:, :, 0:bins_to_mask, :] = -100.0
+                    elif(random.random() < 0.5):
+                        # band mask:
+                        bins_to_mask = random.randint(0,16)
+                        bin_start = random.randint(0,48)
+                        spectrogram[:, :, bin_start:bins_to_mask, :] = -100.0
+                    # spectrogram = data["spectrogram"].to(self.config.run_device)
                     # print(f"Shape of spectrogram after timestretch in mel: {spectrogram.shape}")
                     
                     labels = data["onehot"]

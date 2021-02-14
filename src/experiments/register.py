@@ -8,6 +8,7 @@ from .disk_ds_learner import DiskDsLearner
 from .window_to_spectro import WindowToSpectro
 from .sqlite_ds_learner import SQLiteDsLearner
 from .audio_analyze_experiment import AudioAnalyzeExperiment
+from .preprocessing_test_experiment import PreprocessingTestExperiment
 logger = logging.getLogger(__name__)
 
 class ExperimentRegistry:
@@ -21,7 +22,8 @@ class ExperimentRegistry:
             'disk-ds-learner': DiskDsLearner,
             'audio-analyze': AudioAnalyzeExperiment,
             'spectro-precompute': WindowToSpectro,
-            'sqlite-ds-learner': SQLiteDsLearner
+            'sqlite-ds-learner': SQLiteDsLearner,
+            'preprocessing': PreprocessingTestExperiment,
         }
 
     def run_experiment(self, experiment_name: str, parameter_overrides: Dict[str, str]):

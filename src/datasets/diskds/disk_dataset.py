@@ -198,8 +198,12 @@ class DiskDataset(BaseDataset):
         samples = torch.tensor(samples).to(self._config.dataset_device)
         samples = samples.reshape((1,-1))
         # log.info(f"Samples: {samples.shape}")
-        spectrogram = self.spectrogram_t(samples)
-        # log.info(f"Spectrogram: {spectrogram.shape}")
+        # if(random.random() < 0.1):
+        #     samples = self.low_pass_t(samples, 41000, random.randint(100, 1000))
+        # if(random.random() < 0.1):
+        #     samples = self.high_pass_t(samples, 41000, random.randint(2000, 10000))
+        # spectrogram = self.spectrogram_t(samples)
+        # # log.info(f"Spectrogram: {spectrogram.shape}")
         if(random.random() > 0.5): # half of the samples get a timestretch
             # this is because
             spectrogram = self.time_stretch_t(spectrogram, random.uniform(0.93, 1.07))

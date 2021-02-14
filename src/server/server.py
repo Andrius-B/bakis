@@ -9,6 +9,7 @@ from src.runners.run_parameter_keys import R
 from src.datasets.dataset_provider import DatasetProvider
 from src.datasets.diskds.ceclustering_model_loader import CEClusteringModelLoader
 from torch.utils.data import DataLoader
+import json
 import io
 import torch
 import torchaudio
@@ -59,12 +60,23 @@ file_list = train_l.dataset.get_file_list()
 ceclustring = model.classification[-1]
 ceclustring = ce_clustering_loader.load(ceclustring, cec_save_path, file_list)
 model.classification[-1] = ceclustring
+model.to(searchify_config.run_device)
 log.info("Loading complete, server ready")
 
 def allowed_file(filename):
     _, file_extension = os.path.splitext(filename)
     return file_extension[1:] in ALLOWED_EXTENSIONS
 
+def render_output_page(model_output, total_samples):
+    rendered = f"<div><h2>Samples taken from provided file: {total_samples}</h2></div>"
+    log.info(f"model output (pre-sort): {json.dumps(model_output, indent=4)}")
+    sorted_output = dict(sorted(model_output.items(), key=lambda item: item[1]["samplesOf"], reverse=True))
+    log.info(f"model output (post-sort): {json.dumps(sorted_output, indent=4)}")
+    rendered += "<ol>"
+    for idx in sorted_output:
+        rendered += f"<li>({idx}) \"{sorted_output[idx]['filename']}\" - {sorted_output[idx]['samplesOf']/total_samples:.1%}</li>"
+    rendered += "</ol>"
+    return rendered
 
 @app.route('/searchify', methods=['GET', 'POST'])
 def upload_file():
@@ -90,19 +102,39 @@ def upload_file():
             writer.flush()
             bytes_written = writer.tell()
             memory_file.seek(0)
-            reader = io.BufferedReader(memory_file)
             log.info(f"Bytes transfered to memory file: {bytes_written}")
-            data = reader.read(10)
-            log.info(f"Test read of first 10 bytes: {data}")
             memory_file.seek(0)
             file.save(memory_file)
+            model_output = {}
+            total_samples = 0
             with MemoryFileDiskStorage(memory_file, format=file_extension[1:], features=["data"]) as memory_storage:
                 # do the processing...
                 loader = DataLoader(memory_storage, shuffle=False, batch_size=256, num_workers=0)
                 for item_data in loader:
-                    log.info(f"Batch from loader: {item_data}")
-                # output = model(samples)
-                # log.info(f"Model output: {output}")
+                    with torch.no_grad():
+                        samples = item_data["samples"]
+                        samples = samples.to(searchify_config.run_device)
+                        spectrogram = spectrogram_t(samples)
+                        spectrogram = spectrogram.narrow(3, 0, 64)
+                        spectrogram = norm_t(spectrogram)
+                        spectrogram = mel_t(spectrogram)
+                        spectrogram = ampToDb_t(spectrogram)
+                        outputs = model(spectrogram)
+                        softmaxed = torch.nn.functional.softmax(outputs)
+                        argmaxed = torch.argmax(softmaxed, dim=1)
+                        idxs, counts = torch.unique(argmaxed, sorted=False, return_counts=True)
+                        total_samples += torch.sum(counts)
+                        for i, idx_t in enumerate(idxs):
+                            idx = int(idx_t)
+                            if idx not in model_output: 
+                                model_output[idx] = {
+                                    "filename": file_list[idx],
+                                    "samplesOf": int(counts[i])
+                                }
+                            else:
+                                model_output[idx]["samplesOf"] += int(counts[i])
+                        log.info(f"Model item: {model_output}")
+                return render_output_page(model_output, total_samples)
 
             return f"File uploaded!"
         else:

@@ -77,12 +77,13 @@ class MemoryFileDiskStorage(BaseDataset):
             offset = int(random.uniform(0.0, max_offset))
         else:
             raise AttributeError(f"Unknown type of window: {type(window)}")
-        win_len_frames = duration
+        win_len_frames = int(duration)
         # the sox_io_backend is slow as fuuuuuu, I can't update
         samples, sample_rate = torchaudio.backend.sox_backend.load(
-            window.get_filepath(),
-            offset=int(offset),
-            num_frames=win_len_frames
+            filepath = window.get_filepath(),
+            offset = int(offset),
+            num_frames = win_len_frames,
+
         )
         # librosa.effects.time_stretch(samples, random.uniform(0.93, 1.07))
         # samples = samples[:int(duration*44100)]

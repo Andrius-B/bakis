@@ -20,10 +20,10 @@ class DiskDsLearner(BaseExperiment):
             R.DISKDS_NUM_FILES: '5000',
             R.NUM_CLASSES: '5000',
             R.BATCH_SIZE_TRAIN: '150',
-            R.EPOCHS: '100',
+            R.EPOCHS: '20',
             R.BATCH_SIZE_VALIDATION: '40',
             R.TRAINING_VALIDATION_MODE: 'epoch',
-            R.LR: '1e-3',
+            R.LR: '1e-4',
             R.MEASUREMENTS: 'loss,accuracy',
             R.DISKDS_TRAIN_FEATURES: 'data,onehot',
             R.DISKDS_VALID_FEATURES: 'data,onehot'

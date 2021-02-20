@@ -213,7 +213,7 @@ class ResNet(nn.Module):
         for i, stride in enumerate(strides):
             if(i == len(strides) - 1):
                 # we want to skip the RELU in the last block, because the classification part of the network does it anyway.
-                layers.append(block(self.in_planes, planes, stride, output_activation=last_layer_output_activation))
+                layers.append(block(self.in_planes, planes, stride, output_activation=True))
             else:
                 layers.append(block(self.in_planes, planes, stride, output_activation=True))
             self.in_planes = planes * block.expansion
@@ -222,13 +222,13 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         # print("Running resnet fwd..")
-        # print(f"Input shape: {x.shape}")
+        # print(f"Input shape: {x.shape} --\n{x}")
         out = F.relu(self.bn1(self.conv1(x)))
-        # print(f"after initial conv: {out.shape}")
+        # print(f"after initial conv: {out.shape}--\n{out}")
         out = self.layer1(out)
-        # print(f"after Layer 1: {out.shape}")
+        # print(f"after Layer 1: {out.shape}--\n{out}")
         out = self.layer2(out)
-        # print(f"after Layer 2: {out.shape}")
+        # print(f"after Layer 2: {out.shape}--\n{out}")
         out = self.layer3(out)
 
         if self.layer4 is not None:
@@ -236,12 +236,12 @@ class ResNet(nn.Module):
         if self.layer5 is not None:
             out = self.layer5(out)
         # out = self.convOut(out) # reduce the amount of features..
-        # print(f"after Layer 3: {out.shape}")
-        # print(f"Output after resnet: {out.shape}")
+        # print(f"after Layer 3: {out.shape}--\n{out}")
+        # print(f"Output after resnet: {out.shape}--\n{out}")
         out = F.avg_pool2d(out, out.size()[3])
-        # print(f"Output after pool: {out.shape}")
+        # print(f"Output after pool: {out.shape}--\n{out}")
         out = out.view(out.size(0), -1)
-        # print(f"Output flattened: {out.shape}")
+        # print(f"Output flattened: {out.shape}--\n{out}")
         out = self.classification(out)
         # print(f"Output after classification: {out.shape}")
         # out = torch.sigmoid(out)

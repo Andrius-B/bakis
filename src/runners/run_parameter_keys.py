@@ -55,3 +55,7 @@ class R:
     DISKDS_VALID_FEATURES = RunParameterKey("diskds_features")
 
     DISKDS_FORMATS = RunParameterKey("diskds_formats")
+
+    DISKDS_WINDOW_HOP_TRAIN = RunParameterKey("diskds_window_hop_train")
+
+    DISKDS_WINDOW_HOP_VALIDATION = RunParameterKey("diskds_window_hop_train")

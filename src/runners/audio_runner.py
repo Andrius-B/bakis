@@ -7,12 +7,15 @@ import os
 import datetime
 import torchaudio
 import logging
+import math
 import random
 from typing import Tuple
 from .abstract_runner import AbstractRunner
 from .run_parameters import RunParameters
 from src.datasets.dataset_provider import DatasetProvider
 from src.config import Config
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator 
 from src.runners.run_parameter_keys import R
 
 
@@ -32,7 +35,8 @@ class AudioRunner(AbstractRunner):
         self.model = model
         self.run_params = run_params
         self.dataset_provider = dataset_provider
-        self.config = Config()
+        self.config = config
+        self.spectrogram_generator = SpectrogramGenerator(self.config)
         self.writer = SummaryWriter(self.find_log_folder(tensorboard_prefix), str(datetime.datetime.now()))
         self.train_l, self.train_bs, self.valid_l, self.valid_bs = self.dataset_provider.get_datasets(self.run_params)
 
@@ -46,21 +50,12 @@ class AudioRunner(AbstractRunner):
             dx, dy = dataiter.next()
             self.test_with_one_sample(dx, dy)
 
-        spectrogram_t = torchaudio.transforms.Spectrogram(
-            n_fft=2048, win_length=2048, hop_length=1024, power=None
-        ).to(self.config.run_device) # generates a complex spectrogram
-        time_stretch_t = torchaudio.transforms.TimeStretch(hop_length=1024, n_freq=1025).to(self.config.run_device)
-        low_pass_t = torchaudio.functional.lowpass_biquad
-        high_pass_t = torchaudio.functional.highpass_biquad
-        mel_t = torchaudio.transforms.MelScale(n_mels=64, sample_rate=44100).to(self.config.run_device)
-        norm_t = torchaudio.transforms.ComplexNorm(power=2).to(self.config.run_device)
-        ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(self.config.run_device)
-
 
         # ////////////////////////////////////////////
         # Main training loop
         # ////////////////////////////////////////////
         optimizer = self.create_optimizer()
+        sheduler = ReduceLROnPlateau(optimizer, 'min', patience=5)
         criterion = self.create_criterion().to(self.config.run_device)
         epochs_count = int(self.run_params.getd(R.EPOCHS, 10))
         logger.info(f"Using: {epochs_count} epochs")
@@ -83,27 +78,10 @@ class AudioRunner(AbstractRunner):
                 with torch.no_grad():
                     samples = data["samples"]
                     samples = samples.to(self.config.run_device)
-                    spectrogram = spectrogram_t(samples)
-                    if(random.random() > 0.5): # half of the samples get a timestretch
-                        # this is because
-                        spectrogram = time_stretch_t(spectrogram, random.uniform(0.93, 1.07))
-                    
-                    spectrogram = spectrogram.narrow(3, 0, 64)
-                    spectrogram = norm_t(spectrogram)
-                    spectrogram = mel_t(spectrogram)
-                    spectrogram = ampToDb_t(spectrogram)
-                    # apply frequency masking
-                    if(random.random() < 0.5):
-                    # highpass type mask:
-                        bins_to_mask = random.randint(0,40) 
-                        spectrogram[:, :, 0:bins_to_mask, :] = -100.0
-                    elif(random.random() < 0.5):
-                        # band mask:
-                        bins_to_mask = random.randint(0,16)
-                        bin_start = random.randint(0,48)
-                        spectrogram[:, :, bin_start:bins_to_mask, :] = -100.0
-                    # spectrogram = data["spectrogram"].to(self.config.run_device)
-                    # print(f"Shape of spectrogram after timestretch in mel: {spectrogram.shape}")
+                    spectrogram = self.spectrogram_generator.generate_spectrogram(
+                        samples, narrow_to=64,
+                        timestretch=True, random_highpass=True,
+                        random_bandcut=False, normalize_stdev=True)
                     
                     labels = data["onehot"]
                     labels = labels.to(self.config.run_device)
@@ -112,13 +90,14 @@ class AudioRunner(AbstractRunner):
 
                 # forward + backward + optimize
                 outputs = self.model(spectrogram)
-                # logger.info(f"outputs: {outputs.shape}")
-                # logger.info(f"labels: {labels.shape}")
+                # logger.info(f"outputs: {outputs.shape} -- \n{outputs}")
+                # logger.info(f"labels: {labels.shape} -- \n {labels}")
                 loss = criterion(outputs, labels.view(labels.shape[0],))
                 loss.backward()
                 optimizer.step()
                 with torch.no_grad():
                     loss = loss.detach()
+                    # logger.warn(f"Loss after iteration: {loss}")
                     output_cat = torch.argmax(outputs.detach(), dim=1)
                     labels = labels.view(labels.shape[0],)
                     correct = labels.eq(output_cat).detach()
@@ -134,6 +113,8 @@ class AudioRunner(AbstractRunner):
                     # metrics['accuracy_running'] = predicted_correctly/predicted_total
                 self.writer.add_scalars('train_metrics', metrics, global_step=iteration)
                 iteration += 1
+                if math.isnan(loss.item()):
+                    raise RuntimeError("stop")
                 # print statistics
                 training_summary = f'[{epoch + 1}, {i + 1:03d}] loss: {running_loss/(i+1):.3f} | acc: {predicted_correctly/predicted_total:.3%}'
                 pbar.set_description(training_summary)
@@ -150,6 +131,7 @@ class AudioRunner(AbstractRunner):
                     self.writer.add_scalars('validation_metrics', valid_metrics, global_step=iteration)
                     validation_summary = f"validation acc: top-1={top_one:.3%} top-{k}={top_k:.3%}"
                     pbar.set_description(f"{training_summary} | {validation_summary}")
+                    sheduler.step(running_loss/(i+1))
             torch.save(self.model.state_dict(), "net.pth")
         print('Finished Training')
 
@@ -169,27 +151,16 @@ class AudioRunner(AbstractRunner):
         predicted_total = 0
         predicted_correctly_topk = 0
         num_batches = len(valid_loader)
-        spectrogram_t = torchaudio.transforms.Spectrogram(
-            n_fft=2048, win_length=2048, hop_length=1024, power=None
-        ).to(self.config.run_device) # generates a complex spectrogram
-        # time_stretch_t = torchaudio.transforms.TimeStretch(hop_length=1024, n_freq=1025).to(self.config.run_device)
-        low_pass_t = torchaudio.functional.lowpass_biquad
-        high_pass_t = torchaudio.functional.highpass_biquad
-        mel_t = torchaudio.transforms.MelScale(n_mels=64, sample_rate=44100).to(self.config.run_device)
-        norm_t = torchaudio.transforms.ComplexNorm(power=2).to(self.config.run_device)
-        ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(self.config.run_device)
         with torch.no_grad():
             pbar2 = tqdm(enumerate(valid_loader), total=num_batches, leave=False)
             for _, data in pbar2:
                 # spectrogram = data["spectrogram"].to(self.config.run_device)
                 samples = data["samples"]
                 samples = samples.to(self.config.run_device)
-                spectrogram = spectrogram_t(samples)
-                spectrogram = spectrogram.narrow(3, 0, 64)
-                # print(f"Spectrogram after slowing down: {spectrogram.shape}")
-                spectrogram = norm_t(spectrogram)
-                spectrogram = mel_t(spectrogram)
-                spectrogram = ampToDb_t(spectrogram)
+                spectrogram = self.spectrogram_generator.generate_spectrogram(
+                        samples, narrow_to=64,
+                        timestretch=False, random_highpass=False,
+                        random_bandcut=False, normalize_stdev=True)
 
                 labels = data["onehot"]
                 labels = labels.to(self.config.run_device)

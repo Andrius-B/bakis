@@ -154,7 +154,9 @@ class DiskStorage:
     def get_audio_file_paths(self):
         self._file_count = 0
         self._file_array = []
-        for root, directory, files in os.walk(self._root_dir):
+        for root, directories, files in os.walk(self._root_dir):
+            directories.sort()
+            files.sort()
             for file in files:
                 # print(file)
                 filepath = os.path.normpath(os.path.join(root, file))

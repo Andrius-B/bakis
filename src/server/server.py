@@ -8,6 +8,7 @@ from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.datasets.dataset_provider import DatasetProvider
 from src.datasets.diskds.ceclustering_model_loader import CEClusteringModelLoader
+from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
 from torch.utils.data import DataLoader
 import json
 import io
@@ -27,22 +28,13 @@ app.secret_key = "super secret key"
 searchify_config = Config()
 searchify_config.run_device = torch.device("cpu")
 
-spectrogram_t = torchaudio.transforms.Spectrogram(
-    n_fft=2048, win_length=2048, hop_length=1024, power=None
-).to(searchify_config.run_device) # generates a complex spectrogram
-time_stretch_t = torchaudio.transforms.TimeStretch(hop_length=1024, n_freq=1025).to(searchify_config.run_device)
-low_pass_t = torchaudio.functional.lowpass_biquad
-high_pass_t = torchaudio.functional.highpass_biquad
-mel_t = torchaudio.transforms.MelScale(n_mels=64, sample_rate=44100).to(searchify_config.run_device)
-norm_t = torchaudio.transforms.ComplexNorm(power=2).to(searchify_config.run_device)
-ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(searchify_config.run_device)
+spectrogram_generator = SpectrogramGenerator(searchify_config)
 
 run_params = RunParameters("disk-ds(/home/andrius/git/bakis/data/spotifyTop10000)")
 run_params.apply_overrides(
     {
-            R.DATASET_NAME: 'disk-ds(/home/andrius/git/bakis/data/spotifyTop10000)',
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '5000',
+            R.DISKDS_NUM_FILES: '1000',
         }
 )
 ce_clustering_loader = CEClusteringModelLoader()
@@ -114,11 +106,10 @@ def upload_file():
                     with torch.no_grad():
                         samples = item_data["samples"]
                         samples = samples.to(searchify_config.run_device)
-                        spectrogram = spectrogram_t(samples)
-                        spectrogram = spectrogram.narrow(3, 0, 64)
-                        spectrogram = norm_t(spectrogram)
-                        spectrogram = mel_t(spectrogram)
-                        spectrogram = ampToDb_t(spectrogram)
+                        spectrogram = spectrogram_generator.generate_spectrogram(
+                            samples, narrow_to=64,
+                            timestretch=False, random_highpass=False,
+                            random_bandcut=False, normalize_stdev=True)
                         outputs = model(spectrogram)
                         softmaxed = torch.nn.functional.softmax(outputs)
                         argmaxed = torch.argmax(softmaxed, dim=1)

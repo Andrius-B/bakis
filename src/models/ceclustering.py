@@ -30,8 +30,8 @@ class CEClustering(nn.Module):
         # we need to convert the input point so that we can
         # perform other operations as matrix ops.
         # this makes input into (n, 2) where n is the number of centroids
-        # print(f"Centroids:\n{self.centroids.shape}")
-        # print(f"Radii: \n{self.cluster_sizes.shape}")
+        # print(f"Centroids: {self.centroids.shape} -- \n{self.centroids}")
+        # print(f"Radii: \n{self.cluster_sizes.shape} --\n{self.cluster_sizes}")
         # print(f"Input:\n{input}")
         num_centroids = self.centroids.shape[0]
         input_repeated = input.repeat((1, num_centroids)).view(-1, num_centroids, self.in_features)
@@ -58,4 +58,5 @@ class CEClustering(nn.Module):
         # print(f"Transformed distances:\n{transformed_input_distances.shape}")
         distance_probabilities = torch.add(-torch.pow(transformed_input_distances, 2), 1)
         # print(f"Inverse input distances:\n{distance_probabilities.shape}")
+        normalized = 4*nn.functional.sigmoid(distance_probabilities) - 1
         return distance_probabilities

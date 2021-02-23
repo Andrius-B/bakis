@@ -3,6 +3,9 @@ from torch import Tensor
 import torchaudio
 import torchvision
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SpectrogramGenerator:
     def __init__(self, config: Config):
@@ -19,12 +22,14 @@ class SpectrogramGenerator:
     def generate_spectrogram(self, samples: Tensor, narrow_to=-1, timestretch=False, random_highpass=False, random_bandcut=False, normalize_stdev=True) -> Tensor:
         samples = samples.to(self.config.run_device)
         spectrogram = self.spectrogram_t(samples)
+        # logger.info(f"Spectrogram size from window before narrowing and timestretch: {spectrogram.shape}")
         if timestretch and (random.random() > 0.5): # half of the samples get a timestretch
             # this is because
             spectrogram = self.time_stretch_t(spectrogram, random.uniform(0.93, 1.07))
         
         if narrow_to > 0:
             spectrogram = spectrogram.narrow(3, 0, narrow_to)
+        # logger.info(f"Spectrogram size from window after narrowing: {spectrogram.shape}")
         spectrogram = self.norm_t(spectrogram)
         spectrogram = self.mel_t(spectrogram)
         spectrogram = self.ampToDb_t(spectrogram)
@@ -48,4 +53,5 @@ class SpectrogramGenerator:
             bins_to_mask = random.randint(0,16)
             bin_start = random.randint(0,48)
             spectrogram[:, :, bin_start:bins_to_mask, :] = mask_value
+        # logger.info(f"Final spectrogram size: {spectrogram.shape}")
         return spectrogram

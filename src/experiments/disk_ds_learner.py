@@ -19,14 +19,15 @@ class DiskDsLearner(BaseExperiment):
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
             R.DISKDS_NUM_FILES: '1000',
             R.NUM_CLASSES: '1000',
-            R.BATCH_SIZE_TRAIN: '150',
+            R.BATCH_SIZE_TRAIN: '75',
             R.EPOCHS: '50',
             R.BATCH_SIZE_VALIDATION: '300',
             R.TRAINING_VALIDATION_MODE: 'epoch',
             R.LR: '1e-3',
-            R.DISKDS_WINDOW_HOP_TRAIN: str((2**16)*2),
-            R.DISKDS_WINDOW_HOP_VALIDATION: str((2**16)*8),
+            R.DISKDS_WINDOW_HOP_TRAIN: str((2**16)*4),
+            R.DISKDS_WINDOW_HOP_VALIDATION: str((2**16)*16),
             R.MEASUREMENTS: 'loss,accuracy',
+            R.DISKDS_WINDOW_LENGTH: str((2**17)),
             R.DISKDS_TRAIN_FEATURES: 'data,onehot',
             R.DISKDS_VALID_FEATURES: 'data,onehot'
         }

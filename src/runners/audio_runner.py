@@ -79,7 +79,7 @@ class AudioRunner(AbstractRunner):
                     samples = data["samples"]
                     samples = samples.to(self.config.run_device)
                     spectrogram = self.spectrogram_generator.generate_spectrogram(
-                        samples, narrow_to=64,
+                        samples, narrow_to=128,
                         timestretch=True, random_highpass=True,
                         random_bandcut=False, normalize_stdev=True)
                     
@@ -158,7 +158,7 @@ class AudioRunner(AbstractRunner):
                 samples = data["samples"]
                 samples = samples.to(self.config.run_device)
                 spectrogram = self.spectrogram_generator.generate_spectrogram(
-                        samples, narrow_to=64,
+                        samples, narrow_to=128,
                         timestretch=False, random_highpass=False,
                         random_bandcut=False, normalize_stdev=True)
 

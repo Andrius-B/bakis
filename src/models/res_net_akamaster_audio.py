@@ -238,10 +238,10 @@ class ResNet(nn.Module):
         # out = self.convOut(out) # reduce the amount of features..
         # print(f"after Layer 3: {out.shape}--\n{out}")
         # print(f"Output after resnet: {out.shape}--\n{out}")
-        out = F.avg_pool2d(out, out.size()[3])
-        # print(f"Output after pool: {out.shape}--\n{out}")
+        out = F.max_pool2d(out, (out.shape[-2], out.shape[-1]))
+        # print(f"Output after avg pool: {out.shape}--")
         out = out.view(out.size(0), -1)
-        # print(f"Output flattened: {out.shape}--\n{out}")
+        # print(f"Output flattened: {out.shape}--")
         out = self.classification(out)
         # print(f"Output after classification: {out.shape}")
         # out = torch.sigmoid(out)

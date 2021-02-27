@@ -88,7 +88,8 @@ class Resampler():
             128.2 selects 128 kbps encoding with a quality of 2 (0 specifies highest quality but is very slow, while 9 selects poor quality, but is fast.)
             * This is only used if the output format is mp3..
             link: http://sox.sourceforge.net/soxformat.html
-            """
+            """,
+            default='198.2'
         )
         parser.add_argument(
             "--processes",

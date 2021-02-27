@@ -80,8 +80,9 @@ class AudioRunner(AbstractRunner):
                     samples = samples.to(self.config.run_device)
                     spectrogram = self.spectrogram_generator.generate_spectrogram(
                         samples, narrow_to=128,
-                        timestretch=True, random_highpass=True,
-                        random_bandcut=False, normalize_stdev=True)
+                        timestretch=True, random_highpass=False,
+                        random_bandcut=False, normalize_mag=True,
+                        random_poly_cut=True, inverse_poly_cut=True)
                     
                     labels = data["onehot"]
                     labels = labels.to(self.config.run_device)
@@ -160,7 +161,7 @@ class AudioRunner(AbstractRunner):
                 spectrogram = self.spectrogram_generator.generate_spectrogram(
                         samples, narrow_to=128,
                         timestretch=False, random_highpass=False,
-                        random_bandcut=False, normalize_stdev=True)
+                        random_bandcut=False, normalize_mag=True)
 
                 labels = data["onehot"]
                 labels = labels.to(self.config.run_device)

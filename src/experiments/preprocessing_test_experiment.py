@@ -30,10 +30,7 @@ class PreprocessingTestExperiment(BaseExperiment):
         high_pass_t = torchaudio.functional.highpass_biquad
         griffinLim_t = torchaudio.transforms.GriffinLim(n_fft=2048, win_length=2048, hop_length=1024)
 
-
-
-
-        samples, sr = torchaudio.backend.sox_backend.load("/home/andrius/git/bakis/data/test_data/blue_monday_pitchbend_audacity.mp3", offset=41000*140, num_frames=41000*60)
+        samples, sr = torchaudio.backend.sox_backend.load("/home/andrius/git/bakis/data/test_data/New Order - Blue Monday.mp3", offset=41000*130, num_frames=41000*20)
         samples = samples.to(self.config.run_device)
         log.info(f"Loaded = {samples} (len:{len(samples[0])}) sr={sr} -> {len(samples[0])/sr} seconds of audio")
         cutoff = random.randint(60, 1000)

@@ -55,9 +55,9 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         samples = samples.view(1,1,-1)
         log.info(f"Loaded samples reshaped to: {samples.shape}")
         raw_samples = samples[0][0].cpu().numpy()
-        non_augmented_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize=False).cpu()
-        normalized_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize=True).cpu()
-        highpass_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize=True, random_highpass=True).cpu()
+        non_augmented_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=False).cpu()
+        normalized_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True).cpu()
+        highpass_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, random_highpass=True).cpu()
 
         ax1 = fig.add_subplot(subplots[0], subplots[1], 1)
         ax1.set_title("File Waveform")

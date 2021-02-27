@@ -51,6 +51,6 @@ class DiskDsProvider:
         )
 
         loader = DataLoader(train_ds, shuffle=shuffle[0], batch_size=batch_sizes[0], num_workers=6)
-        valid_loader = DataLoader(valid_ds, shuffle=shuffle[1], batch_size=batch_sizes[1], num_workers=3)
+        valid_loader = DataLoader(valid_ds, shuffle=shuffle[1], batch_size=batch_sizes[1], num_workers=6)
         log.info(f"Imported dataset sizes -> train_ds: {len(train_ds)} valid_ds: {len(valid_ds)}")
         return (loader, batch_sizes[0], valid_loader, batch_sizes[1])

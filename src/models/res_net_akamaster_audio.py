@@ -179,35 +179,34 @@ class ResNet(nn.Module):
         ):
         super(ResNet, self).__init__()
         self.groupMult = 1 # multiplier for each block width -- increases parameters sinificantly
-        self.in_planes = 16 * self.groupMult
+        self.use_output_cnn = False # instead of using avg/max pool to reduce the output panes to 1x1, use a CNN with matching dimensions
+        self.in_planes = 8 * self.groupMult
         self.num_classes= num_classes
         self.ce_dim_count = ce_dim_count
-        self.conv1 = nn.Conv2d(1, 16 * self.groupMult, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(16 * self.groupMult)
-        self.layer1 = self._make_layer(block, 16 * self.groupMult, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 32 * self.groupMult, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 64 * self.groupMult, num_blocks[2], stride=2)
+        self.conv1 = nn.Conv2d(1, 8 * self.groupMult, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(8 * self.groupMult)
+
+        self.layer1 = self._make_layer(block, 8 * self.groupMult, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 16 * self.groupMult, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 32 * self.groupMult, num_blocks[2], stride=2)
 
         self.layer4 = None
         if(len(num_blocks) > 3):
-            act = len(num_blocks) != 4
-            self.layer4 = self._make_layer(block, 128 * self.groupMult, num_blocks[3], stride=2, last_layer_output_activation=act)
+            self.layer4 = self._make_layer(block, 64 * self.groupMult, num_blocks[3], stride=2)
         
         self.layer5 = None
         if(len(num_blocks) > 4):
-            act = len(num_blocks) != 5
-            self.layer5 = self._make_layer(block, 256 * self.groupMult, num_blocks[4], stride=2, last_layer_output_activation=act)
+            self.layer5 = self._make_layer(block, 128 * self.groupMult, num_blocks[4], stride=2)
 
-        if self.layer4 == None:
-            self.classification = self.make_classification(64 * self.groupMult, use_ceclustering)
-        elif self.layer5 == None:
-            self.classification = self.make_classification(128 * self.groupMult, use_ceclustering)
-        else:
-            self.classification = self.make_classification(256 * self.groupMult, use_ceclustering)
+        output_panes = 8*(2**(len(num_blocks)-1)) * self.groupMult
+
+        self.layer6 = nn.Conv2d(output_panes, output_panes, kernel_size=(4,8), stride=1, padding=0, bias=False)
+
+        self.classification = self.make_classification(output_panes, use_ceclustering)
 
         self.apply(_weights_init)
 
-    def _make_layer(self, block, planes, num_blocks, stride, last_layer_output_activation = True):
+    def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
         layers = []
         for i, stride in enumerate(strides):
@@ -237,9 +236,13 @@ class ResNet(nn.Module):
             out = self.layer5(out)
         # out = self.convOut(out) # reduce the amount of features..
         # print(f"after Layer 3: {out.shape}--\n{out}")
-        # print(f"Output after resnet: {out.shape}--\n{out}")
-        out = F.max_pool2d(out, (out.shape[-2], out.shape[-1]))
-        # print(f"Output after avg pool: {out.shape}--")
+        print(f"Output after resnet: {out.shape}--")
+        if(self.use_output_cnn):
+            out = self.layer6(out)
+        else:
+            out = F.max_pool2d(out, (out.shape[-2], out.shape[-1]))
+
+        # print(f"Output after avg pool / output cnn: {out.shape}--")
         out = out.view(out.size(0), -1)
         # print(f"Output flattened: {out.shape}--")
         out = self.classification(out)

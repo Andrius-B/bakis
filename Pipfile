@@ -20,6 +20,7 @@ pandas = "*"
 coloredlogs = "*"
 plotly = "*"
 flask = "*"
+jupyter = "*"
 
 [dev-packages]
 pylint = "*"

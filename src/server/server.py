@@ -34,7 +34,9 @@ run_params = RunParameters("disk-ds(/home/andrius/git/bakis/data/spotifyTop10000
 run_params.apply_overrides(
     {
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '1000',
+            R.DISKDS_NUM_FILES: '100',
+            R.DISKDS_WINDOW_LENGTH: str((2**17)),
+            R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
         }
 )
 ce_clustering_loader = CEClusteringModelLoader()
@@ -99,7 +101,7 @@ def upload_file():
             file.save(memory_file)
             model_output = {}
             total_samples = 0
-            with MemoryFileDiskStorage(memory_file, format=file_extension[1:], features=["data"]) as memory_storage:
+            with MemoryFileDiskStorage(memory_file, format=file_extension[1:], run_params=run_params, features=["data"]) as memory_storage:
                 # do the processing...
                 loader = DataLoader(memory_storage, shuffle=False, batch_size=256, num_workers=0)
                 for item_data in loader:
@@ -107,9 +109,9 @@ def upload_file():
                         samples = item_data["samples"]
                         samples = samples.to(searchify_config.run_device)
                         spectrogram = spectrogram_generator.generate_spectrogram(
-                            samples, narrow_to=64,
+                            samples, narrow_to=128,
                             timestretch=False, random_highpass=False,
-                            random_bandcut=False, normalize_stdev=True)
+                            random_bandcut=False, normalize_mag=True)
                         outputs = model(spectrogram)
                         softmaxed = torch.nn.functional.softmax(outputs)
                         argmaxed = torch.argmax(softmaxed, dim=1)

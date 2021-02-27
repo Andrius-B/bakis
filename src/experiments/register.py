@@ -11,6 +11,7 @@ from .audio_analyze_experiment import AudioAnalyzeExperiment
 from .preprocessing_test_experiment import PreprocessingTestExperiment
 from .spectrogram_analysis_experiment import SpectrogramAnalysisExperiment
 from .mean_std_calculator import MeanStdCalculator
+from .show_spectrograms_experiment import ShowSpectrogramsExperiment
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class ExperimentRegistry:
             'preprocessing': PreprocessingTestExperiment,
             'spectrogram-analysis': SpectrogramAnalysisExperiment,
             'mean-std-calculator': MeanStdCalculator,
+            'show-spectrograms': ShowSpectrogramsExperiment,
         }
 
     def run_experiment(self, experiment_name: str, parameter_overrides: Dict[str, str]):

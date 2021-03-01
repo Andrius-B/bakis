@@ -32,7 +32,7 @@ class ShowSpectrogramsExperiment(BaseExperiment):
         numpy_spec = spectrogram.numpy()[0][0] # unpack from the batch version
         print(f"Spectrogram shape: {numpy_spec.shape}")
         librosa.display.specshow(numpy_spec, sr=sample_rate, hop_length=1024,
-                             x_axis='time', y_axis='mel', ax=ax)
+                             x_axis='time', y_axis='mel', ax=ax, cmap='plasma')
         ax.text(0, 0, self.get_statistics_of_spectrogram(numpy_spec))
 
     def load_spectrogram(self, filepath, offset_frames, length_frames, spectrogram_generator: SpectrogramGenerator, run_params: RunParameters):
@@ -53,7 +53,7 @@ class ShowSpectrogramsExperiment(BaseExperiment):
         samples = samples.view(1,1,-1)
         log.info(f"Loaded samples reshaped to: {samples.shape}")
         raw_samples = samples[0][0].cpu().numpy()
-        return (spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, random_poly_cut=True, inverse_poly_cut=True).cpu(), sample_rate)
+        return (spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, random_poly_cut=False, inverse_poly_cut=False).cpu(), sample_rate)
 
     def run(self):
         run_params = super().get_run_params()
@@ -61,16 +61,16 @@ class ShowSpectrogramsExperiment(BaseExperiment):
         fig = plt.figure(figsize=(8, 8))
         subplots = (3, 2)
         spectrogram_generator = SpectrogramGenerator(config)
-        lenth_frames = 2**18
+        lenth_frames = 2**17
         files = [
+            { "filepath": "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday.mp3", "offset_frames":130*41000, "length_frames":lenth_frames },
             # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_headphone_spotify.mp3", "offset_frames":69*41000, "length_frames":lenth_frames },
-            # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_headphone_spotify_resampled.mp3", "offset_frames":69*41000, "length_frames":lenth_frames },
+            { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_headphone_spotify_resampled.mp3", "offset_frames":69*41000, "length_frames":lenth_frames },
             # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_phone_youtube.mp3", "offset_frames":134*41000, "length_frames":lenth_frames },
             # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_speaker_youtube.mp3", "offset_frames":0, "length_frames":lenth_frames },
-            # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_speaker_youtube_resampled.mp3", "offset_frames":0, "length_frames":lenth_frames },
-            # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_pitchbend_audacity.mp3", "offset_frames":75*41000, "length_frames":lenth_frames },
-            # { "filepath": "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday (experiment-modified).mp3", "offset_frames":8*41000, "length_frames":lenth_frames },
-            { "filepath": "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday.mp3", "offset_frames":130*41000, "length_frames":lenth_frames },
+            { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_speaker_youtube_resampled.mp3", "offset_frames":0, "length_frames":lenth_frames },
+            { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_pitchbend_audacity.mp3", "offset_frames":75*41000, "length_frames":lenth_frames },
+            { "filepath": "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday (experiment-modified).mp3", "offset_frames":8*41000, "length_frames":lenth_frames },
         ]
 
 
@@ -82,12 +82,6 @@ class ShowSpectrogramsExperiment(BaseExperiment):
         fig.tight_layout()
         plt.show()
 
-
-
-
-
-
-        
 
     def help_str(self):
         return """An experiment that loads a couple of files and generates spectrograms from it"""

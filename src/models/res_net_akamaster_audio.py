@@ -179,7 +179,7 @@ class ResNet(nn.Module):
         ):
         super(ResNet, self).__init__()
         self.use_output_cnn = False # instead of using avg/max pool to reduce the output panes to 1x1, use a CNN with matching dimensions
-        self.in_planes = 1 # one channel input is expanded into in_panes - this changes the amount of parameters significantly
+        self.in_planes = 16 # one channel input is expanded into in_panes - this changes the amount of parameters significantly
         self.num_classes= num_classes
         self.ce_dim_count = ce_dim_count
         self.conv1 = nn.Conv2d(1, self.in_planes, kernel_size=3, stride=1, padding=1, bias=False)
@@ -200,6 +200,8 @@ class ResNet(nn.Module):
         self.classification = self.make_classification(output_panes, use_ceclustering)
 
         self.apply(_weights_init)
+        self.save_gradient = False
+        self.resnet_gradient = None
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -214,11 +216,25 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
+    def _gradient_hook(self, gradient):
+        self.resnet_gradient = gradient
+    
+    def get_resnet_gradient(self):
+        return self.resnet_gradient
+
+    def get_resnet_activations(self, x):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.resnet_layers(out)
+        return out
+
     def forward(self, x):
         # print("Running resnet fwd..")
         # print(f"Input shape: {x.shape} --\n{x}")
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.resnet_layers(out)
+        
+        if self.save_gradient:
+            out.register_hook(self._gradient_hook)
 
         # print(f"Output after resnet layers: {out.shape}--")
         if(self.use_output_cnn):
@@ -305,14 +321,14 @@ def resnet56(
     ceclustering = True,
     num_classes = 10,
     init_radius = 0.2,
-    ce_n_dim = 5
+    ce_n_dim = 5,
     ) -> ResNet:
     return ResNet(
         BottleNeckBlock, [2, 4, 6, 4, 2],
         use_ceclustering=ceclustering,
         num_classes = num_classes,
         ce_init_radius = init_radius,
-        ce_dim_count=ce_n_dim
+        ce_dim_count=ce_n_dim,
         )
 
 

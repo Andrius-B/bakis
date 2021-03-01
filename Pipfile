@@ -4,6 +4,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+setuptools = "*"
+wheel = "*"
 torch = "*"
 torchvision = "*"
 tensorboard = "*"
@@ -21,6 +23,7 @@ coloredlogs = "*"
 plotly = "*"
 flask = "*"
 jupyter = "*"
+opencv-python = "*"
 
 [dev-packages]
 pylint = "*"

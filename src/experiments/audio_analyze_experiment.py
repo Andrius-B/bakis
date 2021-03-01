@@ -3,6 +3,7 @@ from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.models.ceclustering import CEClustering
+from src.models.working_model_loader import load_working_model
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,10 +20,11 @@ class AudioAnalyzeExperiment(BaseExperiment):
 
     def get_experiment_default_parameters(self):
         return {
-            R.DATASET_NAME: 'cifar-100',
-            R.EPOCHS: '50',
-            R.NUM_CLASSES: '100',
-            R.MEASUREMENTS: 'loss, accuracy',
+            # R.DATASET_NAME: 'cifar-100',
+            # R.EPOCHS: '50',
+            # R.NUM_CLASSES: '100',
+            # R.MEASUREMENTS: 'loss, accuracy',
+            R.DISKDS_NUM_FILES: '5000'
         }
 
     def show_distance_from_zero_hist(self, clustering_module: CEClustering):
@@ -96,11 +98,9 @@ class AudioAnalyzeExperiment(BaseExperiment):
     def run(self):
         run_params = super().get_run_params()
         method = 'T-SNE'
-        net = torch.load("temp.pth")
-        clustering_module = net.classification[-2].cpu()
+        net, files = load_working_model(run_params, 'zoo/5000-90acc', reload_classes_from_dataset=False)
+        clustering_module = net.classification[-1].cpu()
         # self.show_distance_from_zero_hist(clustering_module)
-        df = pd.read_csv("temp.csv")
-        files = list(df["centroid_filepath"])
         tsne_data = clustering_module.centroids.detach().numpy()
         self.run_centroids_tsne(tsne_data, files)
         

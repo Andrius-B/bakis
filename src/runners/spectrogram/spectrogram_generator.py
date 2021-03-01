@@ -38,7 +38,16 @@ class SpectrogramGenerator:
         c_max = tmp
         c = random.uniform(c_min, c_max)
         return (a, b, c)
-        # return (0, 1, 0)
+
+    def generate_non_differentiable_mask(self, start, stop, steps, polynomials):
+        x = torch.linspace(start, stop, steps)
+        y = torch.ones_like(x)
+        for i in range(polynomials):
+            a,b,c = self.generate_masking_polynomial(0, 20)
+            poly_y = a*(x**2) + b*x + c
+            poly_y[poly_y>1] = 1
+            y = torch.minimum(y, poly_y)
+        return y
 
     def generate_spectrogram(
             self, samples: Tensor,
@@ -79,10 +88,7 @@ class SpectrogramGenerator:
             spec_height = spectrogram.shape[-2]
             spec_width = spectrogram.shape[-1]
             for i, spectrogram_item in enumerate(spectrogram):
-                (a, b, c) = self.generate_masking_polynomial(0, 20)
-                sampling_x = torch.linspace(0,1, spec_height)
-                filter_samples_y = a*(torch.pow(sampling_x, 2)) + b*sampling_x + c
-                filter_samples_y[filter_samples_y > 1] = 1
+                filter_samples_y = self.generate_non_differentiable_mask(0, 1, spec_height, 5)
                 spectrogram_item_multiplier = filter_samples_y.view((spec_height, 1)).repeat((1, spec_width)).view(1, spec_height, spec_width)
                 multiplier[i] = spectrogram_item_multiplier
             if(inverse_poly_cut):

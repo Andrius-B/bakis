@@ -23,32 +23,34 @@ class CEClusteringModelLoader:
         logger.info(f"Loading CEClustring from :{filepath}")
         if not os.path.isfile(filepath):
             logger.warn("File to load CEClustering module not found, using the one provided as default!")
-            return model
-        else:
-            df = pd.read_csv(filepath)
-            if model.cluster_sizes.shape[0] != len(file_list):
-                logger.warn(
+            return model, file_list
+        
+        df = pd.read_csv(filepath)
+        if len(file_list) <= 0:
+            file_list = list(df[CEClusteringModelLoader.FILEPATH])
+        if model.cluster_sizes.shape[0] != len(file_list):
+            logger.warn(
 """Seems that the provided default model has incorrect dimensions for\
 the provided file list. It will be resized to match the required size."""
-                )
-                with torch.no_grad():
-                    model.cluster_sizes.data = torch.rand((len(file_list),))
-                    model.centroids.data = torch.rand((len(file_list), model.centroids.shape[1]))
-            for i,f in enumerate(file_list):
-                if not (df[CEClusteringModelLoader.FILEPATH] == f).any():
-                    logger.warn(f"No centroids found for file {f}, using the one provided f, which might be pretty wrong..")
-                    model.cluster_sizes[i] = torch.tensor(0.4)
-                    continue
-                row = df.loc[df[CEClusteringModelLoader.FILEPATH] == f]
-                cluster_size = torch.tensor(float(row[CEClusteringModelLoader.CLUSTER_SIZE]))
-                centroid_pos = torch.tensor(np.array(eval(list(row[CEClusteringModelLoader.CENTROID_POSITION])[0])))
-                # logger.info(f"Centroid size: {cluster_size} pos: {centroid_pos} file: {f}")
-                model.cluster_sizes[i] = cluster_size
-                model.centroids[i] = centroid_pos
-            # print(df)
-            model.centroids = nn.Parameter(model.centroids)
-            model.cluster_sizes = nn.Parameter(model.cluster_sizes)
-            return model
+            )
+            with torch.no_grad():
+                model.cluster_sizes.data = torch.rand((len(file_list),))
+                model.centroids.data = torch.rand((len(file_list), model.centroids.shape[1]))
+        for i,f in enumerate(file_list):
+            if not (df[CEClusteringModelLoader.FILEPATH] == f).any():
+                logger.warn(f"No centroids found for file {f}, using the one provided f, which might be pretty wrong..")
+                model.cluster_sizes[i] = torch.tensor(0.4)
+                continue
+            row = df.loc[df[CEClusteringModelLoader.FILEPATH] == f]
+            cluster_size = torch.tensor(float(row[CEClusteringModelLoader.CLUSTER_SIZE]))
+            centroid_pos = torch.tensor(np.array(eval(list(row[CEClusteringModelLoader.CENTROID_POSITION])[0])))
+            # logger.info(f"Centroid size: {cluster_size} pos: {centroid_pos} file: {f}")
+            model.cluster_sizes[i] = cluster_size
+            model.centroids[i] = centroid_pos
+        # print(df)
+        model.centroids = nn.Parameter(model.centroids)
+        model.cluster_sizes = nn.Parameter(model.cluster_sizes)
+        return model, file_list
 
     def save(self, model: CEClustering, filepath: str, file_list: List[str]):
         model = model.cpu()

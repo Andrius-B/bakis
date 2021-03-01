@@ -12,6 +12,7 @@ from .preprocessing_test_experiment import PreprocessingTestExperiment
 from .spectrogram_analysis_experiment import SpectrogramAnalysisExperiment
 from .mean_std_calculator import MeanStdCalculator
 from .show_spectrograms_experiment import ShowSpectrogramsExperiment
+from .gradcam_experiment import GradCAMExperiment
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class ExperimentRegistry:
             'spectrogram-analysis': SpectrogramAnalysisExperiment,
             'mean-std-calculator': MeanStdCalculator,
             'show-spectrograms': ShowSpectrogramsExperiment,
+            'grad-cam': GradCAMExperiment,
         }
 
     def run_experiment(self, experiment_name: str, parameter_overrides: Dict[str, str]):

@@ -98,7 +98,7 @@ class AudioAnalyzeExperiment(BaseExperiment):
     def run(self):
         run_params = super().get_run_params()
         method = 'T-SNE'
-        net, files = load_working_model(run_params, 'zoo/5000-90acc', reload_classes_from_dataset=False)
+        net, files = load_working_model(run_params, 'zoo/5000v2', reload_classes_from_dataset=False)
         clustering_module = net.classification[-1].cpu()
         # self.show_distance_from_zero_hist(clustering_module)
         tsne_data = clustering_module.centroids.detach().numpy()

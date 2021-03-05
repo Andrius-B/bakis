@@ -14,7 +14,7 @@ from .abstract_runner import AbstractRunner
 from .run_parameters import RunParameters
 from src.datasets.dataset_provider import DatasetProvider
 from src.config import Config
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import StepLR
 from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator 
 from src.runners.run_parameter_keys import R
 
@@ -55,7 +55,7 @@ class AudioRunner(AbstractRunner):
         # Main training loop
         # ////////////////////////////////////////////
         optimizer = self.create_optimizer()
-        sheduler = ReduceLROnPlateau(optimizer, 'min', patience=5)
+        sheduler = StepLR(optimizer, step_size=40, gamma=0.1)
         criterion = self.create_criterion().to(self.config.run_device)
         epochs_count = int(self.run_params.getd(R.EPOCHS, 10))
         logger.info(f"Using: {epochs_count} epochs")
@@ -82,7 +82,7 @@ class AudioRunner(AbstractRunner):
                         samples, narrow_to=128,
                         timestretch=True, random_highpass=False,
                         random_bandcut=False, normalize_mag=True,
-                        random_poly_cut=True, inverse_poly_cut=True)
+                        random_poly_cut=True, inverse_poly_cut=False)
                     
                     labels = data["onehot"]
                     labels = labels.to(self.config.run_device)

@@ -40,8 +40,8 @@ run_params.apply_overrides(
         }
 )
 ce_clustering_loader = CEClusteringModelLoader()
-net_save_path = "zoo/5000-90acc.pth"
-cec_save_path = "zoo/5000-90acc.csv"
+net_save_path = "zoo/5000v2.pth"
+cec_save_path = "zoo/5000v2.csv"
 if(os.path.isfile(net_save_path)):
     log.info(f"Using saved model from: {net_save_path}")
     model = torch.load(net_save_path)
@@ -52,7 +52,7 @@ train_l, train_bs, valid_l, valid_bs = DatasetProvider().get_datasets(run_params
 # here the train dataset has the file list we are interested in..
 file_list = train_l.dataset.get_file_list()
 ceclustring = model.classification[-1]
-ceclustring = ce_clustering_loader.load(ceclustring, cec_save_path, file_list)
+ceclustring, file_list = ce_clustering_loader.load(ceclustring, cec_save_path, file_list)
 model.classification[-1] = ceclustring
 model.to(searchify_config.run_device)
 log.info("Loading complete, server ready")

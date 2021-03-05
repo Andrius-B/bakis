@@ -8,7 +8,7 @@ class CEClustering(nn.Module):
             self,
             n_dim,
             n_clusters,
-            init_radius = 0.01,
+            init_radius = 0.4,
             init_pos_offset = 0.2,
             init_pos_var = 0.4
         ):
@@ -21,7 +21,7 @@ class CEClustering(nn.Module):
         # this shall be the radius of each cluster
         s = torch.mul(torch.ones((n_clusters,)), init_radius)
         self.cluster_sizes = nn.Parameter(s)
-        self.max_dist = float(self.in_features)
+        self.max_dist = math.sqrt(self.in_features)
 
     def forward(self, input):
         # centroids out of the output latent space don't make sense - clamp them in
@@ -49,15 +49,15 @@ class CEClustering(nn.Module):
         # ]
         # which is the Euclidean distance of input to each centroid
         input_distances = torch.norm(input_distances, p=2, dim=-1)
-        # print(f"Reduced distances: {input_distances.shape} -- \n{input_distances}")
-        normalized_input_distances = torch.div(input_distances, self.max_dist)
-        # print(f"Normalized reduced distances:{normalized_input_distances.shape} -- \n {normalized_input_distances}")
+        input_distances = torch.div(input_distances, self.max_dist)
+        # print(f"Reduced distances:\n{input_distances.shape}")
         # inverse distance - the closer the better.
         # note to self: I think inverse distance would reinfoce overfitting,
         # so i'm just using max distance in the latent space ~ sqrt(2)
 
-        transformed_input_distances = torch.mul(normalized_input_distances, torch.div(1, self.cluster_sizes))
-        # print(f"Transformed (by cluster size) distances: {transformed_input_distances.shape} -- \n {transformed_input_distances}")
+        transformed_input_distances = torch.mul(input_distances, torch.div(1, self.cluster_sizes))
+        # print(f"Transformed distances:\n{transformed_input_distances.shape}")
         distance_probabilities = torch.add(-torch.pow(transformed_input_distances, 2), 1)
         # print(f"Inverse input distances:\n{distance_probabilities.shape}")
+        normalized = 4*nn.functional.sigmoid(distance_probabilities) - 1
         return distance_probabilities

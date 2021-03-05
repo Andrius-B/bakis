@@ -51,12 +51,12 @@ class GradCAMExperiment(BaseExperiment):
     def run(self):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
-        model, filelist = load_working_model(run_params, model_path="zoo/temp", reload_classes_from_dataset=False)
+        model, filelist = load_working_model(run_params, model_path="zoo/5000-90acc", reload_classes_from_dataset=False)
         model.save_gradient = True
         model.cpu()
         # test_filepath = "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_speaker_youtube_resampled.mp3"
         test_filepath = "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday.mp3"
-        spectrogram_raw = self.load_spectrogram(test_filepath, 40*41000, 2**17)
+        spectrogram_raw = self.load_spectrogram(test_filepath, 130*41000, 2**17)
         spectrogram = spectrogram_raw.clone()
         print(spectrogram.shape)
 
@@ -73,7 +73,7 @@ class GradCAMExperiment(BaseExperiment):
         loss_value = loss(predictions, target.long())
         print(f"Loss with a o-h-e vector: {loss_value}")
         # target_class = 36
-        return
+        # return
         # here we do the cheeky trick from the paper -
         # create a onehot encoded vector with one in the target position
         # reference: https://github.com/jacobgil/pytorch-grad-cam/blob/master/gradcam.py

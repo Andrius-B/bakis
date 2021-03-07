@@ -13,6 +13,7 @@ from .spectrogram_analysis_experiment import SpectrogramAnalysisExperiment
 from .mean_std_calculator import MeanStdCalculator
 from .show_spectrograms_experiment import ShowSpectrogramsExperiment
 from .gradcam_experiment import GradCAMExperiment
+from .restore_temp_save_to_zoo import RestoreTempSaveToZooExperiment
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class ExperimentRegistry:
             'mean-std-calculator': MeanStdCalculator,
             'show-spectrograms': ShowSpectrogramsExperiment,
             'grad-cam': GradCAMExperiment,
+            'restore-temp-save-to-zoo': RestoreTempSaveToZooExperiment,
         }
 
     def run_experiment(self, experiment_name: str, parameter_overrides: Dict[str, str]):

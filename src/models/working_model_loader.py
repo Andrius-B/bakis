@@ -3,6 +3,8 @@ from src.datasets.diskds.ceclustering_model_loader import CEClusteringModelLoade
 from src.models.res_net_akamaster_audio import resnet56
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
+import collections
+from src.models.ceclustering import CEClustering
 import os
 import torch
 import logging
@@ -19,10 +21,11 @@ def load_working_model(
 ):
     """A utility to load a working model"""
 
-    model = resnet56(
+    model_new = resnet56(
         ceclustering = True,
         num_classes = int(run_params.get(R.DISKDS_NUM_FILES))
         )
+    model = model_new
     final_net_path = net_save_path
     final_cec_path = cec_save_path
     if(model_path != None):

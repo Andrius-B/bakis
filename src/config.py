@@ -7,6 +7,7 @@ class Config:
     def __init__(
         self,
         dataset_device = torch.device("cpu"),
+        # run_device = torch.device("cpu")
         run_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     ):
         torchaudio.set_audio_backend("sox_io")

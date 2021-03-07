@@ -75,17 +75,17 @@ class AudioRunner(AbstractRunner):
             metrics = {}
             pbar = tqdm(enumerate(self.train_l, 0), total=len(self.train_l), leave=True)
             for i, data in pbar:
-                with torch.no_grad():
-                    samples = data["samples"]
-                    samples = samples.to(self.config.run_device)
-                    spectrogram = self.spectrogram_generator.generate_spectrogram(
-                        samples, narrow_to=128,
-                        timestretch=True, random_highpass=False,
-                        random_bandcut=False, normalize_mag=True,
-                        random_poly_cut=True, inverse_poly_cut=False)
-                    
-                    labels = data["onehot"]
-                    labels = labels.to(self.config.run_device)
+                # with torch.no_grad():
+                samples = data["samples"]
+                samples = samples.to(self.config.run_device)
+                spectrogram = self.spectrogram_generator.generate_spectrogram(
+                    samples, narrow_to=128,
+                    timestretch=True, random_highpass=False,
+                    random_bandcut=False, normalize_mag=True,
+                    random_poly_cut=True, inverse_poly_cut=False)
+                
+                labels = data["onehot"]
+                labels = labels.to(self.config.run_device)
                 # zero the parameter gradients
                 optimizer.zero_grad()
 

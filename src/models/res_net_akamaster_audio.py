@@ -324,7 +324,7 @@ def resnet56(
     ce_n_dim = 5,
     ) -> ResNet:
     return ResNet(
-        BottleNeckBlock, [2, 4, 6, 4, 2],
+        BottleNeckBlock, [2, 4, 6, 5, 3],
         use_ceclustering=ceclustering,
         num_classes = num_classes,
         ce_init_radius = init_radius,

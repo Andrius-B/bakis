@@ -57,7 +57,7 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         raw_samples = samples[0][0].cpu().numpy()
         non_augmented_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=False).cpu()
         normalized_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True).cpu()
-        highpass_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, random_highpass=False, random_poly_cut=True, inverse_poly_cut=True).cpu()
+        random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=True).cpu()
 
         ax1 = fig.add_subplot(subplots[0], subplots[1], 1)
         ax1.set_title("File Waveform")
@@ -70,7 +70,7 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         self.draw_spectrogram(ax3, normalized_spectrogram, sample_rate, "Normalized spectrogram")
 
         ax4 = fig.add_subplot(subplots[0], subplots[1], 4)
-        self.draw_spectrogram(ax4, highpass_spectrogram, sample_rate, "Polynomial frequency-masked spectrogram")
+        self.draw_spectrogram(ax4, random_spectrogram, sample_rate, "FRF mimic mask")
         fig.tight_layout()
         plt.show()
 

@@ -16,7 +16,7 @@ class DiskDsLearner(BaseExperiment):
         return {
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop10000)',
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '9000',
+            R.DISKDS_NUM_FILES: '5000',
             R.BATCH_SIZE_TRAIN: '75',
             R.EPOCHS: '20',
             R.BATCH_SIZE_VALIDATION: '150',
@@ -37,16 +37,16 @@ class DiskDsLearner(BaseExperiment):
     def run(self):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
-        model, _ = load_working_model(run_params, 'zoo/9000v2')
-        model.to("cuda")
-        summary(model, (1, 64, 128))
+        model, _ = load_working_model(run_params, 'zoo/5000v5')
+        model.to("cpu")
+        summary(model, (1, 64, 128), device="cpu")
 
         runner = AudioRunner(model, run_params, tensorboard_prefix='diskds')
         log.info("Runner initialized, starting train")
         runner.train()
         # torch.save(model, net_save_path)
         # ce_clustering_loader.save(model.classification[-1], cec_save_path, file_list)
-        save_working_model(model, run_params, 'zoo/9000v2')
+        save_working_model(model, run_params, 'zoo/5000v5')
         
 
     def help_str(self):

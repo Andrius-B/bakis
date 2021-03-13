@@ -4,6 +4,9 @@ import torchaudio
 import torchvision
 import random
 import torch
+from scipy import interpolate
+import matplotlib.pyplot as plt
+import numpy as np
 from typing import Tuple
 import logging
 
@@ -49,13 +52,44 @@ class SpectrogramGenerator:
             y = torch.minimum(y, poly_y)
         return y
 
+    def generate_mic_frf_mask(self, start_freq: int, end_freq: int, num_samples: int):
+        points = [
+            (20, 0.2),
+            (100, 0.2),
+            (start_freq, 0.9),
+            (start_freq + 100, 0.9),
+            (start_freq + 200, 0.9),
+        ]
+        freq = start_freq
+        while freq < end_freq - 100:
+            freq += 1000
+            points.append((freq, 0.9))
+        points.extend([
+            (end_freq - 100, 0.9),
+            (end_freq + 1000, 0.5),
+            (end_freq + 2000, 0.2),
+        ])
+        freq = end_freq + 2000
+        while freq < 20000:
+            freq += 3000
+            points.append((freq, 0.2))
+        p = np.array(points)
+        x_p, y_p = (p[:,0]/20000), p[:, 1]
+        freq_mask_f = interpolate.interp1d(x_p, y_p, kind='cubic')
+        x = np.linspace(0.001, 1, num_samples)
+        mask_samples = freq_mask_f(x)
+        mask_samples = torch.Tensor(mask_samples)
+        mask_samples = mask_samples.view(-1, 1)
+        return mask_samples
+
     def generate_spectrogram(
             self, samples: Tensor,
             narrow_to=-1, timestretch=False,
             random_highpass=False, random_bandcut=False,
             random_poly_cut=False, inverse_poly_cut=False, # inverse here means that only the poly is left as was
             normalize_mag=True,
-            clip_amplitude = 0, raise_to_power = 1
+            clip_amplitude = 0, raise_to_power = 1,
+            frf_mimic=False,
         ) -> Tensor:
         samples = samples.to(self.config.run_device)
         spectrogram = self.spectrogram_t(samples)
@@ -68,6 +102,20 @@ class SpectrogramGenerator:
             spectrogram = spectrogram.narrow(3, 0, narrow_to)
         spectrogram = self.norm_t(spectrogram)
         spectrogram = self.mel_t(spectrogram)
+        if frf_mimic:
+            mask_samples = self.generate_mic_frf_mask(200, 5000, spectrogram.shape[-2])
+            # print(f"Generated samples: {mask_samples.shape} -- \n {mask_samples}")
+            mask_samples -= torch.randn_like(mask_samples)/10
+            # mask_samples = torch.rand_like(mask_samples)
+            mask_samples = mask_samples.to(self.config.run_device)
+            # plt.figure()
+            # plt.plot(np.linspace(0, 1, mask_samples.shape[-2]), mask_samples.cpu().view(-1))
+
+            mask_samples = mask_samples.view(-1, 1)
+            # print(f"Using mimicing mask: {mask_samples.shape} -- \n{mask_samples}")
+            # print(f"Test spectrogram: {spectrogram.shape} -- \n{spectrogram}")
+            spectrogram = spectrogram * mask_samples
+        # print(f"Spectrogram stats: min={spectrogram.min()} max={spectrogram.max()} median={spectrogram.median()}")
         # note: the size here will be: (batch_size, channel_count, height, width)
         # logger.info(f"Mel Spectrogram size: {spectrogram.shape}")
         # apply frequency masking

@@ -88,7 +88,7 @@ class SpectrogramGenerator:
             spec_height = spectrogram.shape[-2]
             spec_width = spectrogram.shape[-1]
             for i, spectrogram_item in enumerate(spectrogram):
-                filter_samples_y = self.generate_non_differentiable_mask(0, 1, spec_height, 8)
+                filter_samples_y = self.generate_non_differentiable_mask(0, 1, spec_height, 5)
                 spectrogram_item_multiplier = filter_samples_y.view((spec_height, 1)).repeat((1, spec_width)).view(1, spec_height, spec_width)
                 multiplier[i] = spectrogram_item_multiplier
             if(inverse_poly_cut):

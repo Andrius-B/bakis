@@ -30,18 +30,18 @@ searchify_config.run_device = torch.device("cpu")
 
 spectrogram_generator = SpectrogramGenerator(searchify_config)
 
-run_params = RunParameters("disk-ds(/home/andrius/git/bakis/data/spotifyTop10000)")
+run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop10000)")
 run_params.apply_overrides(
     {
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '5000',
+            R.DISKDS_NUM_FILES: '9000',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
             R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
         }
 )
 ce_clustering_loader = CEClusteringModelLoader()
-net_save_path = "zoo/5000v2.pth"
-cec_save_path = "zoo/5000v2.csv"
+net_save_path = "zoo/9000v1.pth"
+cec_save_path = "zoo/9000v1.csv"
 if(os.path.isfile(net_save_path)):
     log.info(f"Using saved model from: {net_save_path}")
     model = torch.load(net_save_path)

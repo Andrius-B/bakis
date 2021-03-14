@@ -82,7 +82,8 @@ class AudioRunner(AbstractRunner):
                     samples, narrow_to=128,
                     timestretch=True, random_highpass=False,
                     random_bandcut=False, normalize_mag=True,
-                    random_poly_cut=True, inverse_poly_cut=False)
+                    random_poly_cut=False, inverse_poly_cut=False,
+                    frf_mimic=True)
                 
                 labels = data["onehot"]
                 labels = labels.to(self.config.run_device)

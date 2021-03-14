@@ -18,7 +18,7 @@ class DiskDsLearner(BaseExperiment):
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
             R.DISKDS_NUM_FILES: '5000',
             R.BATCH_SIZE_TRAIN: '75',
-            R.EPOCHS: '20',
+            R.EPOCHS: '30',
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
             R.LR: '1e-3',
@@ -37,7 +37,7 @@ class DiskDsLearner(BaseExperiment):
     def run(self):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
-        model, _ = load_working_model(run_params, 'zoo/5000v5')
+        model, _ = load_working_model(run_params, 'zoo/5000v6')
         model.to("cpu")
         summary(model, (1, 64, 128), device="cpu")
 
@@ -46,7 +46,7 @@ class DiskDsLearner(BaseExperiment):
         runner.train()
         # torch.save(model, net_save_path)
         # ce_clustering_loader.save(model.classification[-1], cec_save_path, file_list)
-        save_working_model(model, run_params, 'zoo/5000v5')
+        save_working_model(model, run_params, 'zoo/5000v6')
         
 
     def help_str(self):

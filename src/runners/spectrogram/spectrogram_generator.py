@@ -22,6 +22,8 @@ class SpectrogramGenerator:
         self.norm_t = torchaudio.transforms.ComplexNorm(power=2).to(self.config.run_device)
         self.mel_t = torchaudio.transforms.MelScale(n_mels=64, sample_rate=44100).to(self.config.run_device)
         self.ampToDb_t = torchaudio.transforms.AmplitudeToDB(stype='power').to(self.config.run_device)
+        self.poly_cut_cache_size = 100
+        self.poly_cut_cache = {}
     
     def generate_masking_polynomial(self, a_min, a_max) -> Tuple[int, int, int]:
         """
@@ -43,6 +45,9 @@ class SpectrogramGenerator:
         return (a, b, c)
 
     def generate_non_differentiable_mask(self, start, stop, steps, polynomials):
+        cache_index = random.randint(0, self.poly_cut_cache_size)
+        if cache_index in self.poly_cut_cache and random.random() < 70:
+            return self.poly_cut_cache[cache_index]
         x = torch.linspace(start, stop, steps)
         y = torch.ones_like(x)
         for i in range(polynomials):
@@ -50,6 +55,7 @@ class SpectrogramGenerator:
             poly_y = a*(x**2) + b*x + c
             poly_y[poly_y>1] = 1
             y = torch.minimum(y, poly_y)
+        self.poly_cut_cache[cache_index] = y
         return y
 
     def generate_mic_frf_mask(self, start_freq: int, end_freq: int, num_samples: int):
@@ -127,7 +133,7 @@ class SpectrogramGenerator:
         if frf_mimic and random.random() < frf_mimic_prob:
             mask_samples = self.generate_mic_frf_mask(random.randint(101, 1500), random.randint(5000, 10000), spectrogram.shape[-2])
             # print(f"Generated samples: {mask_samples.shape} -- \n {mask_samples}")
-            mask_samples -= torch.randn_like(mask_samples)/10
+            # mask_samples -= torch.randn_like(mask_samples)/10
             # mask_samples = torch.rand_like(mask_samples)
             mask_samples = mask_samples.to(self.config.run_device)
             # plt.figure()
@@ -145,11 +151,12 @@ class SpectrogramGenerator:
             # iterate over batches
             spec_height = spectrogram.shape[-2]
             spec_width = spectrogram.shape[-1]
-            filter_samples_y = self.generate_non_differentiable_mask(0, 1, spec_height, 5)
-            multiplier = filter_samples_y.view(-1, 1).to(self.config.run_device)
+            for i, spectrogram_item in enumerate(spectrogram):
+                filter_samples_y = self.generate_non_differentiable_mask(0, 1, spec_height, 5)
+                spectrogram_item_multiplier = filter_samples_y.view((spec_height, 1)).repeat((1, spec_width)).view(1, spec_height, spec_width)
+                multiplier[i] = spectrogram_item_multiplier
             if(inverse_poly_cut):
                 multiplier = 1 - multiplier
-            multiplier -= torch.randn_like(multiplier)*0.01
             spectrogram = spectrogram*multiplier
         if add_noise > 0:
             spectrogram *= torch.ones_like(spectrogram) - torch.randn_like(spectrogram)*(add_noise)

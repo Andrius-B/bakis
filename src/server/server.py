@@ -9,6 +9,7 @@ from src.runners.run_parameter_keys import R
 from src.datasets.dataset_provider import DatasetProvider
 from src.datasets.diskds.ceclustering_model_loader import CEClusteringModelLoader
 from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
+from src.models.working_model_loader import *
 from torch.utils.data import DataLoader
 import json
 import io
@@ -36,24 +37,10 @@ run_params.apply_overrides(
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
             R.DISKDS_NUM_FILES: '5000',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
-            R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
+            R.DISKDS_WINDOW_HOP_TRAIN: str((2**16)),
         }
 )
-ce_clustering_loader = CEClusteringModelLoader()
-net_save_path = "zoo/5000v5.pth"
-cec_save_path = "zoo/5000v5.csv"
-if(os.path.isfile(net_save_path)):
-    log.info(f"Using saved model from: {net_save_path}")
-    model = torch.load(net_save_path)
-# this loader generation consumes quite a bit of memory because it regenerates
-# all the idx's for the train set, maybe this would make sense to make DiskDsProvider
-# stateful and able to list all files (by calling a static method on disk_storage..)
-train_l, train_bs, valid_l, valid_bs = DatasetProvider().get_datasets(run_params)
-# here the train dataset has the file list we are interested in..
-file_list = train_l.dataset.get_file_list()
-ceclustring = model.classification[-1]
-ceclustring, file_list = ce_clustering_loader.load(ceclustring, cec_save_path, file_list)
-model.classification[-1] = ceclustring
+model, file_list = load_working_model(run_params, "zoo/5000v7", True)
 model.to(searchify_config.run_device)
 log.info("Loading complete, server ready")
 

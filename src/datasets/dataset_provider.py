@@ -29,7 +29,7 @@ class DatasetProvider:
         elif dataset_name == 'cifar-100':
             return self.get_cifar100(batch_sizes, shuffle)
         elif dataset_name.startswith("disk-ds"):
-            return DiskDsProvider().get_disk_dataset(run_params, batch_sizes, shuffle)
+            return DiskDsProvider(run_params).get_disk_dataset(batch_sizes, shuffle)
         elif dataset_name.startswith("sqlite-ds"):
             return SQLiteDsProvider().get_sqlite_dataset(run_params, batch_sizes, shuffle)
             

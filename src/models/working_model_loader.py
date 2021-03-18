@@ -1,4 +1,5 @@
 from src.datasets.dataset_provider import DatasetProvider
+from src.datasets.diskds.diskds_provider import DiskDsProvider
 from src.datasets.diskds.ceclustering_model_loader import CEClusteringModelLoader
 from src.models.res_net_akamaster_audio import resnet56
 from src.runners.run_parameters import RunParameters
@@ -37,12 +38,7 @@ def load_working_model(
     logging.info(f"Loading model from: {final_net_path} and {final_cec_path}")
     file_list = []
     if reload_classes_from_dataset:
-        # this loader generation consumes quite a bit of memory because it regenerates
-        # all the idx's for the train set, maybe this would make sense to make DiskDsProvider
-        # stateful and able to list all files (by calling a static method on disk_storage..)
-        train_l, train_bs, valid_l, valid_bs = DatasetProvider().get_datasets(run_params)
-        # here the train dataset has the file list we are interested in..
-        file_list = train_l.dataset.get_file_list()
+        file_list = list(DiskDsProvider(run_params).get_file_list())
         ceclustring = model.classification[-1]
         ceclustring, file_list = ce_clustering_loader.load(ceclustring, final_cec_path, file_list)
         model.classification[-1] = ceclustring

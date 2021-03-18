@@ -10,6 +10,7 @@ import sqlite3
 from typing import List
 from logging import getLogger
 from torch import save as save_model
+from tqdm import tqdm
 logger = getLogger(__name__)
 
 class CEClusteringModelLoader:
@@ -36,7 +37,7 @@ the provided file list. It will be resized to match the required size."""
             with torch.no_grad():
                 model.cluster_sizes.data = torch.rand((len(file_list),))
                 model.centroids.data = torch.rand((len(file_list), model.centroids.shape[1]))
-        for i,f in enumerate(file_list):
+        for i,f in tqdm(enumerate(file_list), total=len(file_list), leave=False):
             if not (df[CEClusteringModelLoader.FILEPATH] == f).any():
                 logger.warn(f"No centroids found for file {f}, using the one provided f, which might be pretty wrong..")
                 model.cluster_sizes[i] = torch.tensor(0.4)

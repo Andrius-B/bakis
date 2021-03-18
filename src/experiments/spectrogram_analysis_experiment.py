@@ -57,7 +57,7 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         raw_samples = samples[0][0].cpu().numpy()
         non_augmented_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=False).cpu()
         normalized_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True).cpu()
-        random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=True, frf_mimic_prob=0.3, random_poly_cut=True, inverse_poly_cut=False, add_noise=0.03).cpu()
+        random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=True, frf_mimic_prob=1, random_poly_cut=False, inverse_poly_cut=False, add_noise=0.01).cpu()
 
         ax1 = fig.add_subplot(subplots[0], subplots[1], 1)
         ax1.set_title("File Waveform")

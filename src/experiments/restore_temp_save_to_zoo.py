@@ -13,7 +13,7 @@ class RestoreTempSaveToZooExperiment(BaseExperiment):
         return {
             #IMPORTANT: configure the correct dataset for the model here (as file data is not in the temporary pth file)
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop10000)',
-            R.DISKDS_NUM_FILES: '9000',
+            R.DISKDS_NUM_FILES: '5000',
         }
 
     def run(self):
@@ -24,7 +24,7 @@ class RestoreTempSaveToZooExperiment(BaseExperiment):
             num_classes = int(run_params.get(R.DISKDS_NUM_FILES))
         )
         model.load_state_dict(torch.load("net.pth"))
-        save_working_model(model, run_params, 'zoo/9000v1')
+        save_working_model(model, run_params, 'zoo/5000v7')
 
 
     def help_str(self):

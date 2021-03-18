@@ -67,12 +67,6 @@ class DiskDataset(BaseDataset):
         output = {}
         if("data" in self._features):
             item_data = self.read_item_data(window)
-            if("spectrogram" in self._features):
-                samples_flat = item_data["samples"].numpy().reshape((-1))
-                spectrogram = self.generate_mel_spectrogram(samples_flat)
-                item_data = {**item_data, **spectrogram}
-                item_data["samples"] = np.array([]) # reduce the memory footprint
-                item_data["filepath"] = np.array([])
             output = {**output, **item_data}
         if("metadata" in self._features):
             metadata = self.read_item_metadata(window)
@@ -191,31 +185,6 @@ class DiskDataset(BaseDataset):
         # looks like pytorch only wants the actual index:
         onehot = torch.LongTensor([index]).to(self._config.dataset_device)
         return {"onehot": onehot}
-
-
-
-    def generate_mel_spectrogram(self, samples):
-        samples = torch.tensor(samples).to(self._config.dataset_device)
-        samples = samples.reshape((1,-1))
-        # log.info(f"Samples: {samples.shape}")
-        # if(random.random() < 0.1):
-        #     samples = self.low_pass_t(samples, 41000, random.randint(100, 1000))
-        # if(random.random() < 0.1):
-        #     samples = self.high_pass_t(samples, 41000, random.randint(2000, 10000))
-        # spectrogram = self.spectrogram_t(samples)
-        # # log.info(f"Spectrogram: {spectrogram.shape}")
-        if(random.random() > 0.5): # half of the samples get a timestretch
-            # this is because
-            spectrogram = self.time_stretch_t(spectrogram, random.uniform(0.93, 1.07))
-            # log.info(f"Spectrogram stretched: {spectrogram.shape}")
-        spectrogram = spectrogram.narrow(2, 0, 129)
-        # log.info(f"Spectrogram narrowed: {spectrogram.shape}")
-        # print(f"Spectrogram after slowing down: {spectrogram.shape}")
-        spectrogram = self.norm_t(spectrogram)
-        spectrogram = self.mel_t(spectrogram)
-        spectrogram = self.ampToDb_t(spectrogram)
-        # log.info(f"Final spectrogram: {spectrogram.shape}")
-        return {"spectrogram": spectrogram.to(self._config.dataset_device)}
 
 class RandomReadDiskDataset(DiskDataset):
     def __init__(

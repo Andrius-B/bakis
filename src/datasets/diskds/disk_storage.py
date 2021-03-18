@@ -3,7 +3,8 @@ import librosa
 import random
 from torchaudio.backend import sox_io_backend
 from logging import getLogger
-from typing import Generator, List
+from typing import Generator, List, Optional
+from tqdm import tqdm
 
 log = getLogger(__name__)
 
@@ -103,7 +104,8 @@ class DiskStorage:
         files_iterated = 0
         skipped_files = 0
         running_window_length = -1
-        for file in self.get_audio_file_paths():
+        file_paths = list(self.get_audio_file_paths())
+        for file in file_paths:
             if(skipped_files < self._skip_files):
                 skipped_files += 1
                 continue
@@ -186,18 +188,26 @@ class UniformReadWindowGenerationStrategy:
         self.window_hop: int = window_hop
         self.overread = overread
 
-    def generate_windows(self, file, storage):
-        metadata = sox_io_backend.info(file)
+    def generate_windows(self, file, storage, file_format: Optional[str] = None):
+        print(f"getting info for file of type: {file_format}")
+        metadata = sox_io_backend.info(file, file_format)
+        print(f"Metadata of the file: {metadata.__dict__}")
         duration = metadata.num_frames
+        if(metadata.num_frames == 0 and not isinstance(file, str)):
+            samples, sr = sox_io_backend.load(file, format=file_format)
+            duration = samples.shape[-1]
 
         window_size = self.window_len
         i = 0  # index measued in samples
         step = self.window_hop  # leave overlap.
         while(i < duration - (window_size * self.overread)):
-            f_id = storage._file_array.index(file)
+            f_id = -1
+            if isinstance(file, str):
+                f_id = storage._file_array.index(file)
             # w = SpecificAudioFileWindow(storage, f_id, i, i + window_size)
             # print(f"Generated window: {str(w)} max offset: {duration - window_size} current offset: {i}")
             window_end = i + int(window_size * self.overread)
+            log.info(f"Yielding window: {i};{window_end}")
             yield SpecificAudioFileWindow(storage, f_id, i, window_end)
             i += step
 

@@ -59,5 +59,5 @@ class CEClustering(nn.Module):
         # print(f"Transformed distances:\n{transformed_input_distances.shape}")
         distance_probabilities = torch.add(-torch.pow(transformed_input_distances, 2), 1)
         # print(f"Inverse input distances:\n{distance_probabilities.shape}")
-        normalized = 4*nn.functional.sigmoid(distance_probabilities) - 1
+        # normalized = 4*nn.functional.sigmoid(distance_probabilities) - 1
         return distance_probabilities

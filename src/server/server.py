@@ -90,7 +90,7 @@ def upload_file():
             total_samples = 0
             with MemoryFileDiskStorage(memory_file, format=file_extension[1:], run_params=run_params, features=["data"]) as memory_storage:
                 # do the processing...
-                loader = DataLoader(memory_storage, shuffle=False, batch_size=256, num_workers=0)
+                loader = DataLoader(memory_storage, shuffle=False, batch_size=35, num_workers=0)
                 for item_data in loader:
                     with torch.no_grad():
                         samples = item_data["samples"]

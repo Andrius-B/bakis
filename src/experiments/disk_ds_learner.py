@@ -16,14 +16,14 @@ class DiskDsLearner(BaseExperiment):
         return {
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop10000)',
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '5000',
+            R.DISKDS_NUM_FILES: '100',
             R.BATCH_SIZE_TRAIN: '75',
             R.EPOCHS: '15',
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
-            R.LR: '1e-4',
-            R.DISKDS_WINDOW_HOP_TRAIN: str((2**18)),
-            R.DISKDS_WINDOW_HOP_VALIDATION: str((2**20)),
+            R.LR: '1e-3',
+            R.DISKDS_WINDOW_HOP_TRAIN: str((2**16)),
+            R.DISKDS_WINDOW_HOP_VALIDATION: str((2**18)),
             R.MEASUREMENTS: 'loss,accuracy',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
             R.DISKDS_TRAIN_FEATURES: 'data,onehot',
@@ -34,7 +34,7 @@ class DiskDsLearner(BaseExperiment):
     def run(self):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
-        model, _ = load_working_model(run_params, 'zoo/5000v8resample')
+        model, _ = load_working_model(run_params, 'zoo/100v1nocecsize')
         model.to("cpu")
         summary(model, (1, 64, 128), device="cpu")
 
@@ -43,7 +43,7 @@ class DiskDsLearner(BaseExperiment):
         runner.train()
         # torch.save(model, net_save_path)
         # ce_clustering_loader.save(model.classification[-1], cec_save_path, file_list)
-        save_working_model(model, run_params, 'zoo/5000v8resample')
+        save_working_model(model, run_params, 'zoo/100v1nocecsize')
         
 
     def help_str(self):

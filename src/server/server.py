@@ -37,10 +37,10 @@ run_params.apply_overrides(
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
             R.DISKDS_NUM_FILES: '5000',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
-            R.DISKDS_WINDOW_HOP_TRAIN: str((2**16)),
+            R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
         }
 )
-model, file_list = load_working_model(run_params, "zoo/5000v7", True)
+model, file_list = load_working_model(run_params, "zoo/5000v8resample", True)
 model.to(searchify_config.run_device)
 log.info("Loading complete, server ready")
 

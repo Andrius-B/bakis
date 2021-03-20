@@ -31,7 +31,7 @@ class MemoryFileDiskStorage(BaseDataset):
         if window_generation_strategy is None:
             self.window_generation_strategy = UniformReadWindowGenerationStrategy(
                 overread=1, window_len=int(run_params.getd(R.DISKDS_WINDOW_LENGTH, 2**16)),
-                window_hop=int(run_params.getd(R.DISKDS_WINDOW_HOP_TRAIN, 2**16))
+                window_hop=int(run_params.getd(R.DISKDS_WINDOW_HOP_TRAIN, 2**15))
             )
         else:
             self.window_generation_strategy = window_generation_strategy
@@ -43,6 +43,7 @@ class MemoryFileDiskStorage(BaseDataset):
         reader = io.BufferedReader(self.memory_file)
         self.disk_file.write(self.memory_file.read())
         log.info(f"Memory file dumped to: {self.disk_file.name}")
+        info = torchaudio.backend.sox_io_backend.info(self.disk_file.name)
         self._file_array = [self.disk_file.name]
         self._length = -1
         self.windows = list(self.generate_windows())

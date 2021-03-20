@@ -2,6 +2,7 @@ import re
 from logging import getLogger
 from torch.utils.data import DataLoader
 from .disk_storage import UniformReadWindowGenerationStrategy, RandomSubsampleWindowGenerationStrategy
+from src.datasets.diskds.sox_transforms import FileLoadingSoxEffects
 from src.runners.run_parameter_keys import R
 from src.datasets.diskds.disk_dataset import DiskDataset, RandomReadDiskDataset
 from src.datasets.diskds.disk_storage import DiskStorage
@@ -31,6 +32,9 @@ class DiskDsProvider:
         train_window_hop = int(self.run_params.getd(R.DISKDS_WINDOW_HOP_TRAIN, str((2**16)*8)))
         validation_window_hop = int(self.run_params.getd(R.DISKDS_WINDOW_HOP_VALIDATION, str((2**16)*8)))
 
+        use_random_pre_sampling_train = bool(self.run_params.getd(R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_TRAIN, "False"))
+        use_random_pre_sampling_valid = bool(self.run_params.getd(R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_VALID, "False"))
+
         formats_str = self.run_params.getd(R.DISKDS_FORMATS, ".flac,.mp3")
         formats = [x.strip() for x in formats_str.split(",")]
         log.info(f"Loading disk dataset from {self.path}")
@@ -42,7 +46,8 @@ class DiskDsProvider:
             file_limit=self.num_files,
             features=train_features,
             formats=formats,
-            window_generation_strategy=generation_strategy
+            window_generation_strategy=generation_strategy,
+            sox_effects = FileLoadingSoxEffects(random_pre_resampling=use_random_pre_sampling_train)
         )
         log.info("Creating validation dataset..")
         valid_sampling_strategy = UniformReadWindowGenerationStrategy(window_len=self.w_len, window_hop=validation_window_hop, overread=1.09)
@@ -51,11 +56,12 @@ class DiskDsProvider:
             file_limit=self.num_files,
             features=valid_features,
             formats=formats,
-            window_generation_strategy=valid_sampling_strategy
+            window_generation_strategy=valid_sampling_strategy,
+            sox_effects = FileLoadingSoxEffects(random_pre_resampling=use_random_pre_sampling_valid)
         )
 
-        loader = DataLoader(train_ds, shuffle=shuffle[0], batch_size=batch_sizes[0], num_workers=6)
-        valid_loader = DataLoader(valid_ds, shuffle=shuffle[1], batch_size=batch_sizes[1], num_workers=12)
+        loader = DataLoader(train_ds, shuffle=shuffle[0], batch_size=batch_sizes[0], num_workers=22)
+        valid_loader = DataLoader(valid_ds, shuffle=shuffle[1], batch_size=batch_sizes[1], num_workers=24)
         log.info(f"Imported dataset sizes -> train_ds: {len(train_ds)} valid_ds: {len(valid_ds)}")
         return (loader, batch_sizes[0], valid_loader, batch_sizes[1])
     

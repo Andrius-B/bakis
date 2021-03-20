@@ -189,9 +189,9 @@ class UniformReadWindowGenerationStrategy:
         self.overread = overread
 
     def generate_windows(self, file, storage, file_format: Optional[str] = None):
-        print(f"getting info for file of type: {file_format}")
+        # print(f"getting info for file of type: {file_format}")
         metadata = sox_io_backend.info(file, file_format)
-        print(f"Metadata of the file: {metadata.__dict__}")
+        # print(f"Metadata of the file: {metadata.__dict__}")
         duration = metadata.num_frames
         if(metadata.num_frames == 0 and not isinstance(file, str)):
             samples, sr = sox_io_backend.load(file, format=file_format)
@@ -207,7 +207,6 @@ class UniformReadWindowGenerationStrategy:
             # w = SpecificAudioFileWindow(storage, f_id, i, i + window_size)
             # print(f"Generated window: {str(w)} max offset: {duration - window_size} current offset: {i}")
             window_end = i + int(window_size * self.overread)
-            log.info(f"Yielding window: {i};{window_end}")
             yield SpecificAudioFileWindow(storage, f_id, i, window_end)
             i += step
 

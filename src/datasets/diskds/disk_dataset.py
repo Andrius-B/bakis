@@ -1,6 +1,7 @@
 from src.datasets.diskds.base_dataset import BaseDataset
 from typing import List
 from src.datasets.diskds.disk_storage import DiskStorage, SpecificAudioFileWindow, RandomAudioFileWindow, RandomSubsampleWindowGenerationStrategy
+from src.datasets.diskds.sox_transforms import FileLoadingSoxEffects
 from mutagen import File
 from src.config import Config
 from src.util.mutagen_utils import read_flac_metadata, read_mp3_metadata
@@ -29,6 +30,7 @@ class DiskDataset(BaseDataset):
             features=["metadata"],
             storage_type=DiskStorage,
             config: Config = Config(),
+            sox_effects = torch.nn.Module,
             **kwargs):
         self._disk_storage = storage_type(root_directory, **kwargs)
         self._disk_storage.limit_size(size_limit)
@@ -49,6 +51,7 @@ class DiskDataset(BaseDataset):
         self.mel_t = torchaudio.transforms.MelScale(n_mels=129, sample_rate=44100).to(self._config.dataset_device)
         self.norm_t = torchaudio.transforms.ComplexNorm(power=2).to(self._config.dataset_device)
         self.ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(self._config.dataset_device)
+        self.sox_effects = sox_effects
 
     def __len__(self):
         return len(self._idx_list)
@@ -120,7 +123,8 @@ class DiskDataset(BaseDataset):
                 'window_type': window_type,                
                 'file_name': window.get_filepath()
             }
-
+            if self.sox_effects is not None:
+                samples, sample_rate = self.sox_effects(samples)
             if(samples2.shape[1] == win_len_frames):
                 # means we recovered .. sort of..
                 # log.warn(f"Had to shift window start to get thre required amount of frames.. This might be a bug in torchaudio, additional context:{info}")
@@ -129,18 +133,19 @@ class DiskDataset(BaseDataset):
                 log.error(f"Additional info for context: {info}")
                 log.error(f"After a retry of re-reading the samples at a shifted offset, received: {samples2.shape[1]} samples")
                 raise Exception(f"The amount of samples that was read is not the requested amount! requested: {win_len_frames} got: {samples.shape[1]}")
-        # librosa.effects.time_stretch(samples, random.uniform(0.93, 1.07))
-        # samples = samples[:int(duration*44100)]
+        if self.sox_effects is not None:
+            samples, sample_rate = self.sox_effects(samples)
         samples = samples.float().reshape((1,  -1))
         try:
             samples = samples.narrow(1, 0, win_len_frames) # make the float error less prominent by reading a round amount of frames
         except RuntimeError as e:
-            print(f"Failed loading a sample from: {window.get_filepath()} at: {int(offset*44100)}")
+            log.error(f"Failed loading a sample from: {window.get_filepath()} at: {int(offset*44100)}")
+            log.error(f"Tried to narrow the samples to expected window length of ({win_len_frames}) but could not. Samples shape: {samples.shape}")
         if(self._samples_length_runnging == None):
             self._samples_length_runnging = samples.shape[1]
         else:
             if(self._samples_length_runnging != samples.shape[1]):
-                print(f"Read a sample of different length than the running size: {samples.shape}, expected: {self._samples_length_runnging}")
+                log.error(f"Read a sample of different length than the running size: {samples.shape}, expected: {self._samples_length_runnging}")
         samples = samples.reshape((1, -1)).float().to(self._config.dataset_device)
         w_start = offset,
         w_end = offset + duration

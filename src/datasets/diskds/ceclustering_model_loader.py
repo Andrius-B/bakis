@@ -53,7 +53,7 @@ the provided file list. It will be resized to match the required size."""
         model.centroids = nn.Parameter(model.centroids)
         model.cluster_sizes = nn.Parameter(model.cluster_sizes)
         return model, file_list
-
+        
     def save(self, model: CEClustering, filepath: str, file_list: List[str]):
         model = model.cpu()
         logger.info(f"Saving model:{str(model)}")

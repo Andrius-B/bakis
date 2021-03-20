@@ -14,6 +14,7 @@ from .mean_std_calculator import MeanStdCalculator
 from .show_spectrograms_experiment import ShowSpectrogramsExperiment
 from .gradcam_experiment import GradCAMExperiment
 from .restore_temp_save_to_zoo import RestoreTempSaveToZooExperiment
+from .search_experiment import SearchExperiment
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class ExperimentRegistry:
             'show-spectrograms': ShowSpectrogramsExperiment,
             'grad-cam': GradCAMExperiment,
             'restore-temp-save-to-zoo': RestoreTempSaveToZooExperiment,
+            'search': SearchExperiment,
         }
 
     def run_experiment(self, experiment_name: str, parameter_overrides: Dict[str, str]):

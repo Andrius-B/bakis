@@ -31,10 +31,6 @@ class DiskDsLearner(BaseExperiment):
             R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_TRAIN: 'True',
         }
 
-    def load_model(self, net_save_path: str, cec_save_path: str, run_params: RunParameters, ce_clustering_loader: CEClusteringModelLoader):
-
-        return model
-
     def run(self):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()

@@ -2,6 +2,7 @@ from .base_dataset import BaseDataset
 from typing import Generator, List
 from .disk_storage import SpecificAudioFileWindow, RandomAudioFileWindow, UniformReadWindowGenerationStrategy, RandomSubsampleWindowGenerationStrategy
 from src.runners.run_parameters import RunParameters
+from src.datasets.diskds.sox_transforms import FileLoadingSoxEffects
 from src.runners.run_parameter_keys import R
 from src.config import Config
 import tempfile
@@ -30,26 +31,32 @@ class MemoryFileDiskStorage(BaseDataset):
     ):
         if window_generation_strategy is None:
             self.window_generation_strategy = UniformReadWindowGenerationStrategy(
-                overread=1, window_len=int(run_params.getd(R.DISKDS_WINDOW_LENGTH, 2**16)),
+                overread=1.08, window_len=int(run_params.getd(R.DISKDS_WINDOW_LENGTH, 2**16)),
                 window_hop=int(run_params.getd(R.DISKDS_WINDOW_HOP_TRAIN, 2**15))
             )
         else:
             self.window_generation_strategy = window_generation_strategy
         self.memory_file = memory_file
         log.info(f"Memory file passed to storage has: {self.memory_file}")
-        self.disk_file = tempfile.NamedTemporaryFile(mode='w+b', suffix=f".{format}", dir="./data/server_downloads")
-        # data = self.memory_file.read()
-        # log.info(f"Read data from memory file: {data}")
-        reader = io.BufferedReader(self.memory_file)
-        self.disk_file.write(self.memory_file.read())
+        if isinstance(memory_file, str):
+            self.disk_file = open(memory_file, 'r+b')
+        else:
+            self.disk_file = tempfile.NamedTemporaryFile(mode='w+b', suffix=f".{format}", dir="./data/server_downloads")
+            # data = self.memory_file.read()
+            # log.info(f"Read data from memory file: {data}")
+            reader = io.BufferedReader(self.memory_file)
+            self.disk_file.write(self.memory_file.read())
+            self.disk_file.close()
         log.info(f"Memory file dumped to: {self.disk_file.name}")
         info = torchaudio.backend.sox_io_backend.info(self.disk_file.name)
+        log.info(f"Received file metadata: {info.__dict__}")
         self._file_array = [self.disk_file.name]
         self._length = -1
         self.windows = list(self.generate_windows())
         log.info(f"Generated windows: {len(self.windows)}")
         self._features = features
         self._config = config
+        self.sox_effects = FileLoadingSoxEffects(random_pre_resampling=False)
 
     def __len__(self):
         return len(self.windows)
@@ -75,13 +82,6 @@ class MemoryFileDiskStorage(BaseDataset):
         if(isinstance(window, SpecificAudioFileWindow)):
             offset = window.window_start
             duration = window.window_end - window.window_start
-        elif(isinstance(window, RandomAudioFileWindow)):
-            duration = window.window_len
-            metadata = torchaudio.backend.sox_io_backend.info(window.get_filepath())
-            file_duration = metadata.num_frames # calculate duration in seconds
-            # max_offset = min(30, (file_duration-duration))
-            max_offset = file_duration-duration
-            offset = int(random.uniform(0.0, max_offset))
         else:
             raise AttributeError(f"Unknown type of window: {type(window)}")
         win_len_frames = int(duration)
@@ -92,13 +92,14 @@ class MemoryFileDiskStorage(BaseDataset):
             num_frames = win_len_frames,
 
         )
-        # librosa.effects.time_stretch(samples, random.uniform(0.93, 1.07))
-        # samples = samples[:int(duration*44100)]
+        samples, sample_rate = self.sox_effects(samples)
         samples = samples.float().reshape((1,  -1))
         try:
             samples = samples.narrow(1, 0, win_len_frames) # make the float error less prominent by reading a round amount of frames
         except RuntimeError:
-            print(f"Failed loading a sample from: {window.get_filepath()} at: {int(offset*44100)}")
+            log.error(f"Failed loading a sample from: {window.get_filepath()} at: {int(offset)}")
+            log.error(f"Window: {window.__dict__}")
+            #14467446 14467072
         samples = samples.reshape((1, -1)).float().to(self._config.dataset_device)
         w_start = offset,
         w_end = offset + duration

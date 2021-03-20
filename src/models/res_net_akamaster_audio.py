@@ -203,6 +203,9 @@ class ResNet(nn.Module):
         self.save_gradient = False
         self.resnet_gradient = None
 
+        self.save_distance_output = True
+        self.distance_output = None
+
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
         layers = []
@@ -215,6 +218,9 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
 
         return nn.Sequential(*layers)
+
+    def _pre_clustering_forward_hook(self, distance_output):
+        self.distance_output = distance_output
 
     def _gradient_hook(self, gradient):
         self.resnet_gradient = gradient
@@ -246,7 +252,10 @@ class ResNet(nn.Module):
 
         out = out.view(out.size(0), -1)
         # print(f"Output flattened: {out.shape}--")
-
+        # used for preliminary search implementation:
+        with torch.no_grad():
+            if self.save_distance_output:
+                self.distance_output = out.clone().detach()
         out = self.classification(out)
         # print(f"Output after classification: {out.shape}")
         return out

@@ -41,6 +41,7 @@ run_params.apply_overrides(
         }
 )
 model, file_list = load_working_model(run_params, "zoo/5000v8resample", True)
+# model.classification = toch.nn.Identity()
 model.to(searchify_config.run_device)
 log.info("Loading complete, server ready")
 
@@ -50,7 +51,6 @@ def allowed_file(filename):
 
 def render_output_page(model_output, total_samples):
     rendered = f"<div><h2>Samples taken from provided file: {total_samples}</h2></div>"
-    log.info(f"model output (pre-sort): {json.dumps(model_output, indent=4)}")
     sorted_output = dict(sorted(model_output.items(), key=lambda item: item[1]["samplesOf"], reverse=True))
     log.info(f"model output (post-sort): {json.dumps(sorted_output, indent=4)}")
     rendered += "<ol>"

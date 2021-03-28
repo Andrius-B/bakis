@@ -47,7 +47,6 @@ class SearchExperiment(BaseExperiment):
         _, file_extension = os.path.splitext(example_file)
         # a map of cluster -> (sum_dist, num_dist)
         total_samples = 0
-
         topk = 5
         topk_classes_to_evaluate = torch.Tensor()
         sample_output_centroid_positions = torch.Tensor()
@@ -68,26 +67,6 @@ class SearchExperiment(BaseExperiment):
 
                     batch_sample_distances = model.distance_output.to("cpu")
                     sample_output_centroid_positions = torch.cat([sample_output_centroid_positions, batch_sample_distances])
-                    # log.info(f"Top-{topk} classes shape: {topk_indices.shape}")
-                    
-                    # batch_sample_distances = model.distance_output.to("cpu")
-                    # for i, batch_item_topk_indices in enumerate(topk_indices):
-                    #     log.info(f"Batch item topk indicies: {batch_item_topk_indices}")
-                    #     sample_norm_space_position = batch_sample_distances[i]
-                    #     # log.info(f"Position of {i}th sample in norm space: {sample_norm_space_position.shape}")
-                    #     for track_idx in batch_item_topk_indices.numpy():
-                    #         track_norm_space_position = cluster_positions[track_idx]
-                    #         track_cluster_size = float(cluster_sizes[track_idx])
-                    #         # log.info(f"Position of {track_idx} cluster in norm space: {track_norm_space_position.shape}")
-                    #         sample_distance_to_class_cluster = float(torch.dist(sample_norm_space_position, track_norm_space_position, 2)) / cec_max_dist
-                    #         sample_distance_to_class_cluster = sample_distance_to_class_cluster * (1/track_cluster_size)
-                    #         # sample_distance_to_class_cluster = -(sample_distance_to_class_cluster * sample_distance_to_class_cluster) + 1
-                    #         if track_idx not in sample_distances_to_clusters:
-                    #             sample_distances_to_clusters[track_idx] = ([sample_distance_to_class_cluster], 1)
-                    #         else:
-                    #             log.info(f"Sample distances: {sample_distances_to_clusters}")
-                    #             previuos_distances = sample_distances_to_clusters[track_idx]
-                    #             sample_distances_to_clusters[track_idx] = (previuos_distances[0] + [sample_distance_to_class_cluster], previuos_distances[1] + 1)
         log.info(f"Topk class indexes to evaluate in search: {topk_classes_to_evaluate.shape}")
         log.info(f"Output centroid positions shape: {sample_output_centroid_positions.shape}")
         sample_distances_to_clusters = {}
@@ -110,24 +89,6 @@ class SearchExperiment(BaseExperiment):
             track_name = os.path.basename(file_list[track_idx])
             track_name, _ = os.path.splitext(track_name)
             log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_size={cluster_sizes[track_idx].item()}")
-        
-        # sample_avg_distances_to_clusters = {}
-        # for track_idx in sample_distances_to_clusters:
-        #     distances = sample_distances_to_clusters[track_idx]
-        #     sample_avg_distances_to_clusters[track_idx] = (distances[0]/distances[1], distances[1])
-        # sorted_sample_avg_distances_to_clusters = dict(sorted(sample_avg_distances_to_clusters.items(), key=lambda item: item[1][0], reverse=True))
-        # log.info(f"Sample average distances to class clusters: {sorted_sample_avg_distances_to_clusters}")
-                    # for i, idx_t in enumerate(idxs):
-                    #     idx = int(idx_t)
-                    #     if idx not in model_output: 
-                    #         model_output[idx] = {
-                    #             "filename": file_list[idx],
-                    #             "samplesOf": int(counts[i])
-                    #         }
-                    #     else:
-                    #         model_output[idx]["samplesOf"] += int(counts[i])
-                    # sorted_output = dict(sorted(model_output.items(), key=lambda item: item[1]["samplesOf"], reverse=True))
-                    # log.info(f"Sorted sections: {json.dumps(sorted_output)}")
         
 
     def help_str(self):

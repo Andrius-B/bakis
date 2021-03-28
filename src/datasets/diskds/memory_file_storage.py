@@ -46,8 +46,7 @@ class MemoryFileDiskStorage(BaseDataset):
             # log.info(f"Read data from memory file: {data}")
             reader = io.BufferedReader(self.memory_file)
             self.disk_file.write(self.memory_file.read())
-            self.disk_file.close()
-        log.info(f"Memory file dumped to: {self.disk_file.name}")
+            log.info(f"Memory file dumped to: {self.disk_file.name}")
         info = torchaudio.backend.sox_io_backend.info(self.disk_file.name)
         log.info(f"Received file metadata: {info.__dict__}")
         self._file_array = [self.disk_file.name]

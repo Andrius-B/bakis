@@ -20,7 +20,7 @@ class SearchExperiment(BaseExperiment):
         return {
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop10000)',
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '5000',
+            R.DISKDS_NUM_FILES: '9000',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
             R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
         }
@@ -34,7 +34,7 @@ class SearchExperiment(BaseExperiment):
         config = Config()
         config.run_device = torch.device("cpu")
         spectrogram_generator = SpectrogramGenerator(config)
-        model, file_list = load_working_model(run_params, "zoo/5000v8resample", True)
+        model, file_list = load_working_model(run_params, "zoo/9000v3finetune", True)
         cluster_positions = model.classification[-1].centroids.clone().detach().to("cpu")
         cluster_sizes = model.classification[-1].cluster_sizes.clone().detach().to("cpu")
         cec_max_dist = model.classification[-1].max_dist
@@ -43,7 +43,7 @@ class SearchExperiment(BaseExperiment):
         model.to(config.run_device)
         model.save_distance_output = True
         log.info("Loading complete, server ready")
-        example_file = "/media/andrius/FastBoi/micer/recordings/Louis Armstrong - Hello, Dolly!(original).flac"
+        example_file = "/media/andrius/FastBoi/micer/recordings/Hardfloor - Acperience 1(original).flac"
         _, file_extension = os.path.splitext(example_file)
         # a map of cluster -> (sum_dist, num_dist)
         total_samples = 0

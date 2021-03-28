@@ -98,7 +98,7 @@ class SpectrogramGenerator:
             self, samples: Tensor,
             narrow_to=-1, timestretch=False,
             random_highpass=False, random_bandcut=False,
-            random_poly_cut=False, inverse_poly_cut=False, # inverse here means that only the poly is left as was
+            random_poly_cut=False, random_poly_cut_probability=1, inverse_poly_cut=False, # inverse here means that only the poly is left as was
             normalize_mag=True,
             clip_amplitude = 0, raise_to_power = 1,
             frf_mimic=False, frf_mimic_prob=1,
@@ -146,13 +146,14 @@ class SpectrogramGenerator:
             # print(f"Test spectrogram: {spectrogram.shape} -- \n{spectrogram}")
             spectrogram = spectrogram * mask_samples
 
-        if random_poly_cut:
+        if random_poly_cut and random.random() < random_poly_cut_probability:
             multiplier = torch.ones_like(spectrogram)
             # iterate over batches
             spec_height = spectrogram.shape[-2]
             spec_width = spectrogram.shape[-1]
             for i, spectrogram_item in enumerate(spectrogram):
                 filter_samples_y = self.generate_non_differentiable_mask(0, 1, spec_height, 5)
+                # filter_samples_y = filter_samples_y * 0.5
                 spectrogram_item_multiplier = filter_samples_y.view((spec_height, 1)).repeat((1, spec_width)).view(1, spec_height, spec_width)
                 multiplier[i] = spectrogram_item_multiplier
             if(inverse_poly_cut):

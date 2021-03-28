@@ -35,12 +35,12 @@ run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop
 run_params.apply_overrides(
     {
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '5000',
+            R.DISKDS_NUM_FILES: '9000',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
             R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
         }
 )
-model, file_list = load_working_model(run_params, "zoo/5000v8resample", True)
+model, file_list = load_working_model(run_params, "zoo/9000v3finetune", True)
 # model.classification = toch.nn.Identity()
 model.to(searchify_config.run_device)
 log.info("Loading complete, server ready")
@@ -66,6 +66,7 @@ def upload_file():
         if 'file' not in request.files:
             flash('No file part')
             return redirect(request.url)
+        accept_header = request.headers['Accept']
         file = request.files['file']
         # if user does not select file, browser also
         # submit an empty part without filename
@@ -114,6 +115,8 @@ def upload_file():
                             else:
                                 model_output[idx]["samplesOf"] += int(counts[i])
                         log.info(f"Model item: {model_output}")
+                if("application/json" in accept_header):
+                    return json.dumps(model_output)
                 return render_output_page(model_output, total_samples)
 
             return f"File uploaded!"
@@ -125,6 +128,7 @@ def upload_file():
     <h1>Upload new File</h1>
     <form method=post enctype=multipart/form-data>
       <input type=file name=file>
+      <input type="hidden" id="renderHtml" name="renderHtml" value="True">
       <input type=submit value=Upload>
     </form>
     '''

@@ -20,7 +20,7 @@ class Resampler():
 
     def transcode_file(
         self, src_file, output_dir, fmt,
-        channels, mp3_q, pbar
+        channels, mp3_q, sample_rate, pbar
         ) -> Tuple[Popen, Callable]:
         launch_command = ["sox", "--norm"]
         file = os.path.basename(src_file)
@@ -34,8 +34,9 @@ class Resampler():
         if(fmt == "mp3"):
             launch_command.extend(["-C", mp3_q])
         launch_command.extend(["-c", "1"])
-        launch_command.extend(["-r", "44100"])
+        launch_command.extend(["-r", str(sample_rate)])
         launch_command.extend([str(output_file)])
+        launch_command.extend(["remix", "-"])
         transcode_p = Popen(
             launch_command, stdout=PIPE, stderr=PIPE)
         def complete():
@@ -104,6 +105,7 @@ class Resampler():
         extensions = [x.strip().replace('.','') for x in args.src_extensions.split(',')]
         fmt = args.format
         channels = str(int(args.channels))
+        sample_rate = int(args.sample_rate)
         mp3_q = str(float(args.mp3_q))
         num_processes = int(args.processes)
         print(f"Starting resampler from {args.src_dir} to {args.dest_dir}")
@@ -118,6 +120,7 @@ class Resampler():
                 fmt=fmt,
                 channels=channels,
                 mp3_q=mp3_q,
+                sample_rate=sample_rate,
                 pbar=it,
                 )
             if future is None:

@@ -31,7 +31,7 @@ class MemoryFileDiskStorage(BaseDataset):
     ):
         if window_generation_strategy is None:
             self.window_generation_strategy = UniformReadWindowGenerationStrategy(
-                overread=1.08, window_len=int(run_params.getd(R.DISKDS_WINDOW_LENGTH, 2**16)),
+                overread=1.1, window_len=int(run_params.getd(R.DISKDS_WINDOW_LENGTH, 2**16)),
                 window_hop=int(run_params.getd(R.DISKDS_WINDOW_HOP_TRAIN, 2**15))
             )
         else:

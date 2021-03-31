@@ -38,7 +38,7 @@ run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop
 run_params.apply_overrides(
     {
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '5000',
+            R.DISKDS_NUM_FILES: '9000',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
             R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
         }
@@ -48,6 +48,7 @@ cluster_positions = model.classification[-1].centroids.clone().detach().to("cpu"
 cluster_sizes = model.classification[-1].cluster_sizes.clone().detach().to("cpu")
 cec_max_dist = model.classification[-1].max_dist
 model.save_distance_output = True
+model.train(False)
 model.to(searchify_config.run_device)
 log.info("Loading complete, server ready")
 
@@ -112,6 +113,7 @@ def upload_file():
             topk = query_topn
             with MemoryFileDiskStorage(memory_file, format=file_extension[1:], run_params=run_params, features=["data"]) as memory_storage:
                 loader = DataLoader(memory_storage, shuffle=False, batch_size=5, num_workers=0)
+                top1_answers = torch.tensor([])
                 for item_data in loader:
                     with torch.no_grad():
                         samples = item_data["samples"]
@@ -121,6 +123,8 @@ def upload_file():
                             timestretch=False, random_highpass=False,
                             random_bandcut=False, normalize_mag=True)
                         outputs = model(spectrogram)
+                        top1_answers = torch.cat([top1_answers, torch.argmax(outputs, dim=-1).view(-1)])
+                        # log.info(f"Outputs: {torch.argmax(outputs, dim=-1)}")
                         _, topk_indices = outputs.topk(topk)
                         topk_indices = topk_indices.unique()
                         topk_classes_to_evaluate = torch.cat([topk_classes_to_evaluate, topk_indices]).unique()
@@ -128,6 +132,9 @@ def upload_file():
                         batch_sample_distances = model.distance_output.to("cpu")
                         batch_sample_distances = torch.sigmoid(batch_sample_distances)
                         sample_output_centroid_positions = torch.cat([sample_output_centroid_positions, batch_sample_distances])
+                model_top1_idx = int(torch.mode(top1_answers, 0).values)
+                log.info(f"Top1 model answer mode: {torch.mode(top1_answers, 0)}")
+                log.info(f"Top1 model answer: {os.path.basename(file_list[model_top1_idx])}")
                 log.info(f"Topk class indexes to evaluate in search: {topk_classes_to_evaluate.shape}")
                 log.info(f"Output centroid positions shape: {sample_output_centroid_positions.shape}")
                 log.info(f"")
@@ -146,9 +153,11 @@ def upload_file():
                     output_distances = torch.norm(abs_output_distances, p=2, dim=-1)
                     # log.info(f"Normed output distances: {output_distances}")
                     output_distances = torch.div(output_distances, cec_max_dist)
+                    output_distances = torch.mul(output_distances, torch.div(1, track_cluster_size))
+                    output_distances = torch.pow(output_distances, 2)
                     # output_distances = torch.mul(output_distances, torch.div(1, track_cluster_size))
                     # log.info(f"Output distances: {output_distances.shape} -- \n {output_distances}")
-                    mean_output_distance_for_track = output_distances.mean()
+                    mean_output_distance_for_track = torch.quantile(output_distances, 0.5)
                     sample_distances_to_clusters[track_idx] = mean_output_distance_for_track.item()
                 sorted_sample_avg_distances_to_clusters = dict(sorted(sample_distances_to_clusters.items(), key=lambda item: item[1], reverse=False))
                 graph_nodes = [GraphNode(-1, "Provided sample audio", float(0))]
@@ -172,9 +181,12 @@ def upload_file():
                         if len(list(filter(f, graph_links))) == 0: # if there is no link yet between the two nodes
                             source_pos = cluster_positions[source_idx]
                             target_pos = cluster_positions[target_idx]
+                            source_size = cluster_sizes[source_idx]
+                            target_size = cluster_sizes[target_idx]
                             abs_output_distances = source_pos - target_pos
                             output_distances = torch.norm(abs_output_distances, p=2, dim=-1)
                             link_distance = torch.div(output_distances, cec_max_dist)
+                            link_distance = torch.pow(link_distance, 2)
                             # log.info(f"Link distance between {source_idx} and {target_idx}: {link_distance}")
                             topn_links.append(GraphLink(int(source_idx), int(target_idx), float(link_distance.item())))
                 # add links between other top-n tracks

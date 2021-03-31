@@ -21,4 +21,4 @@ class GraphData:
     total_samples: int
 
     def json(self) -> str:
-        return json.dumps(asdict(self), indent=4, sort_keys=True)
+        return json.dumps(asdict(self))

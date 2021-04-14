@@ -47,7 +47,7 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         
         samples, sample_rate = torchaudio.backend.sox_backend.load(
             filepath,
-            offset=44100*49,
+            offset=config.sample_rate*49,
             num_frames=int(run_params.get(R.DISKDS_WINDOW_LENGTH)),
             normalization=False,
         )

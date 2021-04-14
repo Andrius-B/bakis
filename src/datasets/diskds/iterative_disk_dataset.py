@@ -22,7 +22,8 @@ class IterativeDiskDataset(IterableDataset):
         file_limit: int,  # = -1
         n_preloaded_files: int,  # = 2
         window_size: int = 2**16,
-        window_hop: int = 2**16/4
+        window_hop: int = 2**16/4,
+        config: Config = Config()
     ):
         self._root_dir = directory
         self._file_limit = file_limit
@@ -58,7 +59,7 @@ class IterativeDiskDataset(IterableDataset):
             w_cnt = 0
             for fp in self.get_audio_file_paths_all():
                 file_duration = self.get_file_duration(fp)
-                windows = file_duration / (self._window_hop / 44100)
+                windows = file_duration / (self._window_hop / self._config.sample_rate)
                 windows = int(windows)
                 # print(f"Duration for file: {fp} {file_duration} windows est: {windows}")
                 w_cnt += windows
@@ -148,12 +149,14 @@ class AudioFileWindowIterator:
         ohe_index: int,
         window_length: int,
         window_hop: int,
+        config: Config = Config(),
     ):
         self._audio_file_path = audio_file_path
         self._features = features
         self._current_window_offset = 0
         self._window_length = window_length
         self._window_hop = window_hop
+        self._config = config
         self._samples, self._sample_rate = librosa.core.load(
             self._audio_file_path,
             sr=None,
@@ -196,7 +199,7 @@ class AudioFileWindowIterator:
         self._current_window_offset += self._window_hop
         samples = self._samples[wstart:wend]
         samples = torch.tensor(samples)
-        samples = samples.reshape((1, -1)).float().to(Config().dataset_device)
+        samples = samples.reshape((1, -1)).float().to(self._config.dataset_device)
         return {
             "samples": samples,
             "sample_rate": self._sample_rate,
@@ -248,7 +251,7 @@ class AudioFileWindowIterator:
         w_len = 2048
         hop = int(w_len/4)
         window = signal.windows.triang(w_len)
-        mel_spec = librosa.feature.melspectrogram(samples, sr=44100, n_fft=w_len,
+        mel_spec = librosa.feature.melspectrogram(samples, sr=self._config.sample_rate, n_fft=w_len,
                                                   hop_length=hop,
                                                   n_mels=129)
         mel_spec = librosa.power_to_db(mel_spec, ref=np.max)

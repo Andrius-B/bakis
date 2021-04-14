@@ -15,5 +15,7 @@ class Config:
         self.dataset_device = dataset_device
         # on which device should the model be placed / train or test samples moved to ?
         self.run_device = run_device
+
+        self.sample_rate = 22050 # sample rate of the dataset
         # logging.basicConfig(level=logging.INFO)
         coloredlogs.install(fmt='%(asctime)s %(levelname)s %(message)s')

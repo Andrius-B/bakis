@@ -37,7 +37,7 @@ class WindowToSpectro(BaseExperiment):
         ).to(self.config.run_device) # generates a complex spectrogram
         time_stretch_t = torchaudio.transforms.TimeStretch(hop_length=1024, n_freq=1025).to(self.config.run_device)
         freq_mask_t = torchaudio.transforms.FrequencyMasking(32)
-        mel_t = torchaudio.transforms.MelScale(n_mels=64, sample_rate=44100).to(self.config.run_device)
+        mel_t = torchaudio.transforms.MelScale(n_mels=64, sample_rate=self.config.sample_rate).to(self.config.run_device)
         norm_t = torchaudio.transforms.ComplexNorm(power=2).to(self.config.run_device)
         ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(self.config.run_device)
 
@@ -63,14 +63,14 @@ class WindowToSpectro(BaseExperiment):
         fig = plt.figure(figsize=(6, 6))
         ax1 = fig.add_subplot(2, 2, 1)
         ax1.set_title(f"File Waveform ({test_item['filepath']})")
-        librosa.display.waveplot(samples, sr=44100, ax=ax1)
+        librosa.display.waveplot(samples, sr=self.config.sample_rate, ax=ax1)
 
 
         ax2 = fig.add_subplot(2, 2, 3)
         ax2.set_title("Pytorch generated spectrogram")
         spectro = spectrogram.numpy()
         print(f"Spectrogram shape: {spectro.shape} --\n{spectro}")
-        librosa.display.specshow(spectro, sr=44100, hop_length=1024,
+        librosa.display.specshow(spectro, sr=self.config.sample_rate, hop_length=1024,
                              x_axis='time', y_axis='mel', ax=ax2)
 
         # full_samples, sample_rate = torchaudio.backend.sox_io_backend.load(item['filepath'][0])

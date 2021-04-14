@@ -5,6 +5,7 @@ import argparse
 from typing import Callable, List, Tuple
 from tqdm import tqdm
 from src.tools.base_tool import BaseTool
+import pathlib
 
 
 class Resampler():
@@ -108,12 +109,13 @@ class Resampler():
         sample_rate = int(args.sample_rate)
         mp3_q = str(float(args.mp3_q))
         num_processes = int(args.processes)
+        pathlib.Path(dest).mkdir(parents=True, exist_ok=True)
         print(f"Starting resampler from {args.src_dir} to {args.dest_dir}")
         l = sum([1 for _ in self.iterate_audio_files(src, extensions)])
         it = tqdm(self.iterate_audio_files(src, extensions), total=l)
         queue:List[Tuple[Popen,Callable]] = []
         for file in it:
-            it.write(f"Transcoding file to: {file}")
+            it.write(f"Transcoding file to: {dest}")
             future = self.transcode_file(
                 src_file=file,
                 output_dir=dest,

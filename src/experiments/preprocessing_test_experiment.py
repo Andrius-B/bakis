@@ -23,7 +23,7 @@ class PreprocessingTestExperiment(BaseExperiment):
         time_stretch_t = torchaudio.transforms.TimeStretch(hop_length=1024, n_freq=1025).to(self.config.run_device)
         low_pass_t = torchaudio.functional.lowpass_biquad
         high_pass_t = torchaudio.functional.highpass_biquad
-        mel_t = torchaudio.transforms.MelScale(n_mels=64, sample_rate=44100).to(self.config.run_device)
+        mel_t = torchaudio.transforms.MelScale(n_mels=64, sample_rate=self.config.sample_rate).to(self.config.run_device)
         norm_t = torchaudio.transforms.ComplexNorm(power=2).to(self.config.run_device)
         ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(self.config.run_device)
         low_pass_t = torchaudio.functional.lowpass_biquad

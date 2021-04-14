@@ -48,7 +48,7 @@ class DiskDataset(BaseDataset):
         self.time_stretch_t = torchaudio.transforms.TimeStretch(hop_length=512, n_freq=1025).to(self._config.dataset_device)
         self.low_pass_t = torchaudio.functional.lowpass_biquad
         self.high_pass_t = torchaudio.functional.highpass_biquad
-        self.mel_t = torchaudio.transforms.MelScale(n_mels=129, sample_rate=44100).to(self._config.dataset_device)
+        self.mel_t = torchaudio.transforms.MelScale(n_mels=129, sample_rate=self._config.sample_rate).to(self._config.dataset_device)
         self.norm_t = torchaudio.transforms.ComplexNorm(power=2).to(self._config.dataset_device)
         self.ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(self._config.dataset_device)
         self.sox_effects = sox_effects
@@ -139,7 +139,7 @@ class DiskDataset(BaseDataset):
         try:
             samples = samples.narrow(1, 0, win_len_frames) # make the float error less prominent by reading a round amount of frames
         except RuntimeError as e:
-            log.error(f"Failed loading a sample from: {window.get_filepath()} at: {int(offset*44100)}")
+            log.error(f"Failed loading a sample from: {window.get_filepath()} at: {int(offset*self._config.sample_rate)}")
             log.error(f"Tried to narrow the samples to expected window length of ({win_len_frames}) but could not. Samples shape: {samples.shape}")
         if(self._samples_length_runnging == None):
             self._samples_length_runnging = samples.shape[1]

@@ -46,9 +46,9 @@ class ShowSpectrogramsExperiment(BaseExperiment):
             num_frames=length_frames,
             normalization=False,
         )
-        sample_path = os.path.join(os.path.dirname(filepath), "samples", f"sample_{os.path.basename(filepath)}")
-        print(f"Would save file to: {sample_path}")
-        torchaudio.backend.sox_backend.save(sample_path, samples, 41000)
+        # sample_path = os.path.join(os.path.dirname(filepath), "samples", f"sample_{os.path.basename(filepath)}")
+        # print(f"Would save file to: {sample_path}")
+        # torchaudio.backend.sox_backend.save(sample_path, samples, 41000)
         samples = samples[0] # only take one channel.
         samples = samples.view(1,1,-1)
         log.info(f"Loaded samples reshaped to: {samples.shape}")
@@ -63,14 +63,15 @@ class ShowSpectrogramsExperiment(BaseExperiment):
         spectrogram_generator = SpectrogramGenerator(config)
         lenth_frames = 2**17
         files = [
-            { "filepath": "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday.mp3", "offset_frames":130*41000, "length_frames":lenth_frames },
+            # { "filepath": "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday.mp3", "offset_frames":130*41000, "length_frames":lenth_frames },
             # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_headphone_spotify.mp3", "offset_frames":69*41000, "length_frames":lenth_frames },
-            { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_headphone_spotify_resampled.mp3", "offset_frames":69*41000, "length_frames":lenth_frames },
+            # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_headphone_spotify_resampled.mp3", "offset_frames":69*41000, "length_frames":lenth_frames },
             # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_phone_youtube.mp3", "offset_frames":134*41000, "length_frames":lenth_frames },
             # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_speaker_youtube.mp3", "offset_frames":0, "length_frames":lenth_frames },
-            { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_speaker_youtube_resampled.mp3", "offset_frames":0, "length_frames":lenth_frames },
-            { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_pitchbend_audacity.mp3", "offset_frames":75*41000, "length_frames":lenth_frames },
-            { "filepath": "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday (experiment-modified).mp3", "offset_frames":8*41000, "length_frames":lenth_frames },
+            # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_speaker_youtube_resampled.mp3", "offset_frames":0, "length_frames":lenth_frames },
+            # { "filepath": "/home/andrius/git/bakis/data/test_data/blue_monday_pitchbend_audacity.mp3", "offset_frames":75*41000, "length_frames":lenth_frames },
+            # { "filepath": "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday (experiment-modified).mp3", "offset_frames":8*41000, "length_frames":lenth_frames },
+            { "filepath": "/media/andrius/FastBoi/bakis_data/top10000_meta_22k/!!! - Heart Of Hearts.mp3", "offset_frames":8*41000, "length_frames":lenth_frames }
         ]
 
 

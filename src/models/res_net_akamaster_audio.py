@@ -179,7 +179,7 @@ class ResNet(nn.Module):
         ):
         super(ResNet, self).__init__()
         self.use_output_cnn = False # instead of using avg/max pool to reduce the output panes to 1x1, use a CNN with matching dimensions
-        self.in_planes = 16 # one channel input is expanded into in_panes - this changes the amount of parameters significantly
+        self.in_planes = 8 # one channel input is expanded into in_panes - this changes the amount of parameters significantly
         self.num_classes= num_classes
         self.ce_dim_count = ce_dim_count
         self.conv1 = nn.Conv2d(1, self.in_planes, kernel_size=3, stride=1, padding=1, bias=False)

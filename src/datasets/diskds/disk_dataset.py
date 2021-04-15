@@ -80,24 +80,29 @@ class DiskDataset(BaseDataset):
         return output
 
     def read_item_data(self, window):
+        metadata = torchaudio.backend.sox_io_backend.info(window.get_filepath())
+        file_duration = metadata.num_frames
         if(isinstance(window, SpecificAudioFileWindow)):
             offset = window.window_start
             duration = window.window_end - window.window_start
         elif(isinstance(window, RandomAudioFileWindow)):
             duration = window.window_len
-            metadata = torchaudio.backend.sox_io_backend.info(window.get_filepath())
-            file_duration = metadata.num_frames # calculate duration in seconds
             # max_offset = min(30, (file_duration-duration))
-            max_offset = file_duration-duration
+            max_offset = file_duration-duration-1
             offset = int(random.uniform(0.0, max_offset))
         else:
             raise AttributeError(f"Unknown type of window: {type(window)}")
+        if(offset + duration >= file_duration):
+            log.error(f"Tried loading file {window.get_filepath()} at offset: {offset} and dur: {duration}, while len is: {file_duration}. Using random window")
+            max_offset = file_duration-duration-1
+            offset = int(random.uniform(0.0, max_offset))
         win_len_frames = duration
         # the sox_io_backend is slow as fuuuuuu, I can't update
-        samples, sample_rate = torchaudio.backend.sox_backend.load(
+        samples, sample_rate = torchaudio.backend.sox_io_backend.load(
             window.get_filepath(),
-            offset=int(offset),
-            num_frames=win_len_frames
+            frame_offset=int(offset),
+            num_frames=win_len_frames,
+            normalize=False,
         )
         if(samples.shape[1] != win_len_frames):
             metadata = torchaudio.backend.sox_io_backend.info(window.get_filepath())
@@ -108,10 +113,11 @@ class DiskDataset(BaseDataset):
             else:
                 window_type = "unknown"
             difference = win_len_frames - samples.shape[1]
-            samples2, _ = torchaudio.backend.sox_backend.load(
+            samples2, _ = torchaudio.backend.sox_io_backend.load(
                 window.get_filepath(),
-                offset=(offset - difference), # shift back the requested offset a bit.. this might be a bug in pytorch
+                frame_offset=(offset - difference), # shift back the requested offset a bit.. this might be a bug in pytorch
                 num_frames=win_len_frames,
+                normalize=False,
             )
 
             info = {

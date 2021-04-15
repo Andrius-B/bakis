@@ -34,6 +34,9 @@ class R:
 
     CRITERION = RunParameterKey("criterion")
 
+    # one of 'mass', 'cec'
+    CLUSTERING_MODEL = RunParameterKey("clustering_model")
+
     # learning rate
     LR = RunParameterKey("lr")
 

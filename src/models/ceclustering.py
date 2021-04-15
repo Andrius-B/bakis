@@ -17,16 +17,17 @@ class CEClustering(nn.Module):
         self.in_features = n_dim
         c = torch.mul(torch.rand((n_clusters, n_dim)), init_pos_var)
         c = torch.add(c, torch.full((n_clusters, n_dim), init_pos_offset))
+        self.g_constant = nn.Parameter(torch.ones(1))
         self.centroids = nn.Parameter(c)
         # this shall be the radius of each cluster
         s = torch.mul(torch.ones((n_clusters,)), init_radius)
-        self.cluster_sizes = nn.Parameter(s)
+        self.cluster_mass = nn.Parameter(s)
         self.max_dist = math.sqrt(self.in_features)
 
     def forward(self, input):
         # centroids out of the output latent space don't make sense - clamp them in
         self.centroids.data = torch.clamp(self.centroids, 0, 1)
-        self.cluster_sizes.data = torch.clamp(self.cluster_sizes, 1e-3, 3)
+        # self.cluster_mass.data = torch.clamp(self.cluster_mass, 1e-3, 3)
         # we need to convert the input point so that we can
         # perform other operations as matrix ops.
         # this makes input into (n, 2) where n is the number of centroids
@@ -55,9 +56,6 @@ class CEClustering(nn.Module):
         # note to self: I think inverse distance would reinfoce overfitting,
         # so i'm just using max distance in the latent space ~ sqrt(2)
 
-        transformed_input_distances = torch.mul(input_distances, torch.div(1, self.cluster_sizes))
-        # print(f"Transformed distances:\n{transformed_input_distances.shape}")
-        distance_probabilities = torch.add(-torch.pow(transformed_input_distances, 2), 1)
-        # print(f"Inverse input distances:\n{distance_probabilities.shape}")
-        # normalized = 4*nn.functional.sigmoid(distance_probabilities) - 1
-        return distance_probabilities
+        # sorta mimicing the gravity force here with G*m1*m2/r^2
+        cluster_forces = self.g_constant * self.cluster_mass / torch.square(input_distances)
+        return cluster_forces

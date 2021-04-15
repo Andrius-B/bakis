@@ -40,11 +40,11 @@ class ShowSpectrogramsExperiment(BaseExperiment):
             log.error(f"Requested test file not found at: {filepath}")
             raise RuntimeError(f"File not found: {filepath}")
         
-        samples, sample_rate = torchaudio.backend.sox_io_backend.load(
+        samples, sample_rate = torchaudio.backend.sox_backend.load(
             filepath,
-            frame_offset=offset_frames,
+            offset=offset_frames,
             num_frames=length_frames,
-            normalize=False,
+            normalization=False,
         )
         # sample_path = os.path.join(os.path.dirname(filepath), "samples", f"sample_{os.path.basename(filepath)}")
         # print(f"Would save file to: {sample_path}")

@@ -66,76 +66,86 @@ class AudioRunner(AbstractRunner):
         self.model.to(self.config.run_device)
         iteration = 0
         for epoch in range(epochs_count):  # loop over the dataset multiple times
-            self.model.train(True)
-            running_loss = 0.0
-            predicted_correctly = 0
-            predicted_total = 0
-            record_loss = 'loss' in measures
-            record_acc = 'accuracy' in measures
-            metrics = {}
-            pbar = tqdm(enumerate(self.train_l, 0), total=len(self.train_l), leave=True)
-            for i, data in pbar:
-                # with torch.no_grad():
-                samples = data["samples"]
-                samples = samples.to(self.config.run_device)
-                spectrogram = self.spectrogram_generator.generate_spectrogram(
-                    samples, narrow_to=128,
-                    timestretch=True, random_highpass=False,
-                    random_bandcut=False, normalize_mag=True,
-                    random_poly_cut=True, random_poly_cut_probability=0.35, inverse_poly_cut=False,
-                    frf_mimic=False, frf_mimic_prob=0,
-                    add_noise=0)
-                
-                labels = data["onehot"]
-                labels = labels.to(self.config.run_device)
-                # zero the parameter gradients
-                optimizer.zero_grad()
-
-                # forward + backward + optimize
-                outputs = self.model(spectrogram)
-                # logger.info(f"outputs: {outputs.shape} -- \n{outputs}")
-                # logger.info(f"labels: {labels.shape} -- \n {labels}")
-                loss = criterion(outputs, labels.view(labels.shape[0],))
-                loss.backward()
-                optimizer.step()
-                with torch.no_grad():
-                    loss = loss.detach()
-                    # logger.warn(f"Loss after iteration: {loss}")
-                    output_cat = torch.argmax(outputs.detach(), dim=1)
-                    labels = labels.view(labels.shape[0],)
-                    correct = labels.eq(output_cat).detach()
-                    predicted_correctly += correct.sum().item()
-                    predicted_total += correct.shape[0]
-                    running_loss += loss.item()
-
-                if record_loss:
-                    metrics['loss'] = loss.item()
-                    # metrics['running_loss'] = running_loss
-                if record_acc:
-                    metrics['accuracy'] = correct.sum().item()/correct.shape[0]
-                    # metrics['accuracy_running'] = predicted_correctly/predicted_total
-                self.writer.add_scalars('train_metrics', metrics, global_step=iteration)
-                iteration += 1
-                if math.isnan(loss.item()):
-                    raise RuntimeError("stop")
-                # print statistics
-                training_summary = f'[{epoch + 1}, {i + 1:03d}] loss: {running_loss/(i+1):.3f} | acc: {predicted_correctly/predicted_total:.3%}'
-                pbar.set_description(training_summary)
-                if i == len(pbar) - 1:
+            try:
+                self.model.train(True)
+                running_loss = 0.0
+                predicted_correctly = 0
+                predicted_total = 0
+                record_loss = 'loss' in measures
+                record_acc = 'accuracy' in measures
+                metrics = {}
+                pbar = tqdm(enumerate(self.train_l, 0), total=len(self.train_l), leave=True)
+                for i, data in pbar:
                     # with torch.no_grad():
-                    #     cluster_sizes = self.model.classification[-1].cluster_sizes
-                    #     pbar.write(f"Median cluster size={torch.median(cluster_sizes)} mean={torch.mean(cluster_sizes)} min={torch.min(cluster_sizes)} max={torch.max(cluster_sizes)}")
-                    k = 5
-                    top_one, top_k = self.get_validation_accuracy(self.model, self.valid_l, self.config, topn = k)
-                    valid_metrics = {
-                        'top1': top_one,
-                        f'top{k}': top_k
-                    }
-                    self.writer.add_scalars('validation_metrics', valid_metrics, global_step=iteration)
-                    validation_summary = f"validation acc: top-1={top_one:.3%} top-{k}={top_k:.3%}"
-                    pbar.set_description(f"{training_summary} | {validation_summary}")
-                    sheduler.step(running_loss/(i+1))
-            torch.save(self.model.state_dict(), "net.pth")
+                    samples = data["samples"]
+                    samples = samples.to(self.config.run_device)
+                    spectrogram = self.spectrogram_generator.generate_spectrogram(
+                        samples, narrow_to=128,
+                        timestretch=True, random_highpass=False,
+                        random_bandcut=False, normalize_mag=True,
+                        random_poly_cut=True, random_poly_cut_probability=0.35, inverse_poly_cut=False,
+                        frf_mimic=False, frf_mimic_prob=0,
+                        add_noise=0)
+                    
+                    labels = data["onehot"]
+                    labels = labels.to(self.config.run_device)
+                    # zero the parameter gradients
+                    optimizer.zero_grad()
+
+                    # forward + backward + optimize
+                    outputs = self.model(spectrogram)
+                    # logger.info(f"outputs: {outputs.shape} -- \n{outputs}")
+                    # logger.info(f"labels: {labels.shape} -- \n {labels}")
+                    loss = criterion(outputs, labels.view(labels.shape[0],))
+                    loss.backward()
+                    optimizer.step()
+                    with torch.no_grad():
+                        loss = loss.detach()
+                        # logger.warn(f"Loss after iteration: {loss}")
+                        output_cat = torch.argmax(outputs.detach(), dim=1)
+                        labels = labels.view(labels.shape[0],)
+                        correct = labels.eq(output_cat).detach()
+                        predicted_correctly += correct.sum().item()
+                        predicted_total += correct.shape[0]
+                        running_loss += loss.item()
+
+                    if record_loss:
+                        metrics['loss'] = loss.item()
+                        # metrics['running_loss'] = running_loss
+                    if record_acc:
+                        metrics['accuracy'] = correct.sum().item()/correct.shape[0]
+                        # metrics['accuracy_running'] = predicted_correctly/predicted_total
+                    self.writer.add_scalars('train_metrics', metrics, global_step=iteration)
+                    iteration += 1
+                    if math.isnan(loss.item()):
+                        raise RuntimeError("stop")
+                    # print statistics
+                    training_summary = f'[{epoch + 1}, {i + 1:03d}] loss: {running_loss/(i+1):.3f} | acc: {predicted_correctly/predicted_total:.3%}'
+                    pbar.set_description(training_summary)
+                    if i == len(pbar) - 1:
+                        # with torch.no_grad():
+                        #     cluster_sizes = self.model.classification[-1].cluster_sizes
+                        #     pbar.write(f"Median cluster size={torch.median(cluster_sizes)} mean={torch.mean(cluster_sizes)} min={torch.min(cluster_sizes)} max={torch.max(cluster_sizes)}")
+                        k = 5
+                        top_one, top_k = self.get_validation_accuracy(self.model, self.valid_l, self.config, topn = k)
+                        valid_metrics = {
+                            'top1': top_one,
+                            f'top{k}': top_k
+                        }
+                        self.writer.add_scalars('validation_metrics', valid_metrics, global_step=iteration)
+                        validation_summary = f"validation acc: top-1={top_one:.3%} top-{k}={top_k:.3%}"
+                        pbar.set_description(f"{training_summary} | {validation_summary}")
+                        sheduler.step(running_loss/(i+1))
+                torch.save(self.model.state_dict(), "net.pth")
+            except KeyboardInterrupt as e:
+                temp_file = "net_c.pth"
+                logger.error(f"Interrupted with control-c, saving temp file: {temp_file}")
+                torch.save(self.model.state_dict(), temp_file)
+                logger.error(f"Recovery file created for model parameters")
+                raise KeyboardInterrupt("Canceling training - interrupted")
+            except Exception as e:
+                logger.error(f"Caught and exeption, skipping to next epoch")
+                logger.exception(e)
         print('Finished Training')
 
     def test_with_one_sample(self, dx, dy):

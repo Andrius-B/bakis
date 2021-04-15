@@ -3,3 +3,5 @@ __pycache__
 /.vscode
 /data
 /runs
+net.pth
+net_c.pth

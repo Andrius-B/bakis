@@ -98,11 +98,11 @@ class DiskDataset(BaseDataset):
             offset = int(random.uniform(0.0, max_offset))
         win_len_frames = duration
         # the sox_io_backend is slow as fuuuuuu, I can't update
-        samples, sample_rate = torchaudio.backend.sox_io_backend.load(
+        samples, sample_rate = torchaudio.backend.sox_backend.load(
             window.get_filepath(),
-            frame_offset=int(offset),
+            offset=int(offset),
             num_frames=win_len_frames,
-            normalize=False,
+            normalization=False,
         )
         if(samples.shape[1] != win_len_frames):
             metadata = torchaudio.backend.sox_io_backend.info(window.get_filepath())
@@ -113,11 +113,11 @@ class DiskDataset(BaseDataset):
             else:
                 window_type = "unknown"
             difference = win_len_frames - samples.shape[1]
-            samples2, _ = torchaudio.backend.sox_io_backend.load(
+            samples2, _ = torchaudio.backend.sox_backend.load(
                 window.get_filepath(),
-                frame_offset=(offset - difference), # shift back the requested offset a bit.. this might be a bug in pytorch
+                offset=(offset - difference), # shift back the requested offset a bit.. this might be a bug in pytorch
                 num_frames=win_len_frames,
-                normalize=False,
+                normalization=False,
             )
 
             info = {

@@ -21,9 +21,9 @@ class FileLoadingSoxEffects(torch.nn.Module):
 
     def forward(self, samples: torch.Tensor):
         effects = [*self.effects_before]
-        if random.random() < 0.5:
+        if random.random() < 0.3:
             if self.random_pre_resampling:
-                effects.append(["rate", str(random.randint(16000, 22000))])
+                effects.append(["rate", str(random.randint(8000, 16000))])
             effects.extend(self.effects_after)
         return torchaudio.sox_effects.apply_effects_tensor(
             samples, self.initial_sample_rate, effects)

@@ -52,6 +52,8 @@ the provided file list. It will be resized to match the required size."""
                 model.cluster_mass[i] = cluster_mass
                 model.centroids[i] = centroid_pos
         # print(df)
+        g_constant = torch.tensor([float(df[MassClusteringModelLoader.GRAVITATIONAL_CONSTANT].iloc[0])])
+        model.g_constant = nn.Parameter(g_constant)
         model.centroids = nn.Parameter(model.centroids)
         model.cluster_mass = nn.Parameter(model.cluster_mass)
         return model, file_list
@@ -75,7 +77,9 @@ the provided file list. It will be resized to match the required size."""
                 MassClusteringModelLoader.CENTROID_POSITION: [],
                 MassClusteringModelLoader.CLUSTER_MASS: [],
                 MassClusteringModelLoader.FILEPATH: [],
+                MassClusteringModelLoader.GRAVITATIONAL_CONSTANT: []
             }
+            df_source[MassClusteringModelLoader.GRAVITATIONAL_CONSTANT] = float(model.g_constant.item())
             for i, f in enumerate(file_list):
                 centroid_pos = model.centroids[i].detach().numpy().tolist()
                 df_source[MassClusteringModelLoader.CENTROID_POSITION].append(centroid_pos)

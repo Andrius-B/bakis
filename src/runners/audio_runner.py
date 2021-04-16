@@ -55,7 +55,7 @@ class AudioRunner(AbstractRunner):
         # Main training loop
         # ////////////////////////////////////////////
         optimizer = self.create_optimizer()
-        sheduler = StepLR(optimizer, step_size=25, gamma=0.1)
+        sheduler = StepLR(optimizer, step_size=20, gamma=0.1)
         criterion = self.create_criterion().to(self.config.run_device)
         epochs_count = int(self.run_params.getd(R.EPOCHS, 10))
         logger.info(f"Using: {epochs_count} epochs")

@@ -18,15 +18,6 @@ cmap = matplotlib.cm.get_cmap('plasma')
 
 class AudioAnalyzeExperiment(BaseExperiment):
 
-    def get_experiment_default_parameters(self):
-        return {
-            # R.DATASET_NAME: 'cifar-100',
-            # R.EPOCHS: '50',
-            # R.NUM_CLASSES: '100',
-            # R.MEASUREMENTS: 'loss, accuracy',
-            R.DISKDS_NUM_FILES: '5000'
-        }
-
     def show_distance_from_zero_hist(self, clustering_module: CEClustering):
         clustering_module = clustering_module.cpu()
         centroids = clustering_module.centroids.detach().numpy()
@@ -95,10 +86,16 @@ class AudioAnalyzeExperiment(BaseExperiment):
     def load_cec_from_csv(self, csv_path) -> (CEClustering, List[str]):
         pass
 
+    def get_experiment_default_parameters(self):
+        return {
+            R.CLUSTERING_MODEL: 'mass',
+            R.DISKDS_NUM_FILES: '5000'
+        }
+
     def run(self):
         run_params = super().get_run_params()
         method = 'T-SNE'
-        net, files = load_working_model(run_params, 'zoo/5000v8resample', reload_classes_from_dataset=False)
+        net, files = load_working_model(run_params, 'zoo/5000massv1', reload_classes_from_dataset=False)
         clustering_module = net.classification[-1].cpu()
         # self.show_distance_from_zero_hist(clustering_module)
         tsne_data = clustering_module.centroids.detach().numpy()

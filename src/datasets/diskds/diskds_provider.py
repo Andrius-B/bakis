@@ -7,6 +7,7 @@ from src.runners.run_parameter_keys import R
 from src.datasets.diskds.disk_dataset import DiskDataset, RandomReadDiskDataset
 from src.datasets.diskds.disk_storage import DiskStorage
 import src.runners.run_parameters
+from src.config import Config
 from typing import List
 
 log = getLogger(__name__)
@@ -21,7 +22,7 @@ class DiskDsProvider:
         self.num_files = int(run_params.getd(R.DISKDS_NUM_FILES, str(-1)))
         self.run_params = run_params
 
-    def get_disk_dataset(self, batch_sizes: (int, int), shuffle: (bool, bool)):
+    def get_disk_dataset(self, batch_sizes: (int, int), shuffle: (bool, bool), config: Config = Config()):
         
         train_features_str = self.run_params.getd(R.DISKDS_TRAIN_FEATURES, "data,onehot")
         train_features = [x.strip() for x in train_features_str.split(",")]
@@ -47,7 +48,7 @@ class DiskDsProvider:
             features=train_features,
             formats=formats,
             window_generation_strategy=generation_strategy,
-            sox_effects = FileLoadingSoxEffects(random_pre_resampling=use_random_pre_sampling_train)
+            sox_effects = FileLoadingSoxEffects(initial_sample_rate=config.sample_rate, final_sample_rate=config.sample_rate, random_pre_resampling=use_random_pre_sampling_train)
         )
         log.info("Creating validation dataset..")
         valid_sampling_strategy = UniformReadWindowGenerationStrategy(window_len=self.w_len, window_hop=validation_window_hop, overread=1.09)
@@ -57,7 +58,7 @@ class DiskDsProvider:
             features=valid_features,
             formats=formats,
             window_generation_strategy=valid_sampling_strategy,
-            sox_effects = FileLoadingSoxEffects(random_pre_resampling=use_random_pre_sampling_valid)
+            sox_effects = FileLoadingSoxEffects(initial_sample_rate=config.sample_rate, final_sample_rate=config.sample_rate, random_pre_resampling=use_random_pre_sampling_valid)
         )
 
         loader = DataLoader(train_ds, shuffle=shuffle[0], batch_size=batch_sizes[0], num_workers=22)

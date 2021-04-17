@@ -8,24 +8,23 @@ from src.runners.run_parameters import RunParameters
 from src.models.res_net_akamaster_audio import *
 from src.models.working_model_loader import *
 from src.runners.run_parameter_keys import R
-from src.datasets.diskds.ceclustering_model_loader import CEClusteringModelLoader
 
 class DiskDsLearner(BaseExperiment):
 
     def get_experiment_default_parameters(self):
         return {
-            R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/top10000_meta_22k)',
+            R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/top10000_meta_22k2)',
             # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '5000',
+            R.DISKDS_NUM_FILES: '100',
             R.BATCH_SIZE_TRAIN: '75',
             R.CLUSTERING_MODEL: 'mass',
-            R.MODEL_SAVE_PATH: 'zoo/5000massv1',
-            R.EPOCHS: '5',
+            R.MODEL_SAVE_PATH: 'zoo/100massv1',
+            R.EPOCHS: '15',
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
-            R.LR: str(1e-4),
-            R.DISKDS_WINDOW_HOP_TRAIN: str((2**16)),
-            R.DISKDS_WINDOW_HOP_VALIDATION: str((2**18)),
+            R.LR: str(1e-3),
+            R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
+            R.DISKDS_WINDOW_HOP_VALIDATION: str((2**16)),
             R.MEASUREMENTS: 'loss,accuracy',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
             R.DISKDS_TRAIN_FEATURES: 'data,onehot',
@@ -38,6 +37,7 @@ class DiskDsLearner(BaseExperiment):
         run_params = super().get_run_params()
         model_save_path = run_params.get(R.MODEL_SAVE_PATH)
         model, _ = load_working_model(run_params, model_save_path)
+        log.info(f"Loaded classification model: {model.classification}")
         model.to("cpu")
         summary(model, (1, 64, 128), device="cpu")
 

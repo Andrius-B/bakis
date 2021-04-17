@@ -9,7 +9,6 @@ from src.datasets.diskds.memory_file_storage import MemoryFileDiskStorage
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.datasets.dataset_provider import DatasetProvider
-from src.datasets.diskds.ceclustering_model_loader import CEClusteringModelLoader
 from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
 from src.models.working_model_loader import *
 from torch.utils.data import DataLoader
@@ -38,14 +37,16 @@ searchify_config.run_device = torch.device("cpu")
 
 spectrogram_generator = SpectrogramGenerator(searchify_config)
 
+# Note to self: Remember to change the global net sampling rate to correspond to the dataset.
 run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/top10000_meta_22k2)")
+# run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop10000)")
 run_params.apply_overrides(
     {
-            R.CLUSTERING_MODEL: 'mass',
-            R.DISKDS_NUM_FILES: '5000',
-            R.DISKDS_WINDOW_LENGTH: str((2**17)),
-            R.DISKDS_WINDOW_HOP_TRAIN: str((2**15)),
-        }
+        R.CLUSTERING_MODEL: 'mass',
+        R.DISKDS_NUM_FILES: '5000',
+        R.DISKDS_WINDOW_LENGTH: str((2**17)),
+        R.DISKDS_WINDOW_HOP_TRAIN: str((2**15)),
+    }
 )
 model, file_list = load_working_model(run_params, "zoo/5000massv1", True)
 model_type = run_params.getd(R.CLUSTERING_MODEL, "cec")
@@ -62,7 +63,7 @@ elif model_type == "mass":
 model.save_distance_output = True
 model.train(False)
 model.to(searchify_config.run_device)
-log.info("Loading complete, server ready")
+log.info(f"Loading complete, server ready, loaded model: {model.classification}")
 
 def allowed_file(filename):
     _, file_extension = os.path.splitext(filename)
@@ -106,11 +107,12 @@ def get_cover():
     filepath = file_list[track_idx]
     log.info(f"Looking for cover picture in id3 of : {filepath}")
     id3 = ID3(filepath)
-    picture_apic = id3.getall("APIC")[0]
-    if picture_apic is None:
+    picture_apic_list = id3.getall("APIC")
+    if picture_apic_list is None or len(picture_apic_list) == 0:
         log.error(f"APIC not found on the requested file {filepath}")
         log.error(f"Found the following id3 info:\n{id3.pprint()}")
         abort(404)
+    picture_apic = picture_apic_list[0]
     picture_bytes = picture_apic.data
     picture_file = BytesIO(picture_bytes)
     return send_file(picture_file, mimetype=picture_apic.mime)
@@ -255,6 +257,7 @@ def upload_file():
                                 output_distances = torch.norm(abs_output_distance, p=2, dim=-1)
                                 link_distance = torch.div(output_distances, cec_max_dist)
                                 link_distance = torch.pow(link_distance, 2)
+                                # link_distance = torch.mul(output_distances, torch.div(1, track_cluster_size))
                                 # log.info(f"Link distance between {source_idx} and {target_idx}: {link_distance}")
                                 topn_links.append(GraphLink(int(source_idx), int(target_idx), float(link_distance.item())))
                             elif model_type == "mass":

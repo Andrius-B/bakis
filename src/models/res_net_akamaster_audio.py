@@ -28,6 +28,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from src.models.ceclustering import CEClustering
+from src.models.mass_clustering import MassClustering
 
 from torch.autograd import Variable
 
@@ -173,6 +174,7 @@ class ResNet(nn.Module):
             block,
             num_blocks,
             use_ceclustering=True,
+            use_massclustering=False,
             num_classes=10,
             ce_dim_count = 5,
             ce_init_radius = 0.1,
@@ -197,7 +199,7 @@ class ResNet(nn.Module):
         output_panes = int(running_panes / 2)
         self.layer6 = nn.Conv2d(output_panes, output_panes, kernel_size=(1,2), stride=1, padding=0, bias=False)
         # print(f"classification layer expecting output panes: {output_panes}")
-        self.classification = self.make_classification(output_panes, use_ceclustering)
+        self.classification = self.make_classification(output_panes, use_ceclustering, use_massclustering)
 
         self.apply(_weights_init)
         self.save_gradient = False
@@ -260,14 +262,30 @@ class ResNet(nn.Module):
         # print(f"Output after classification: {out.shape}")
         return out
     
-    def make_classification(self, in_features, use_ceclustering):
+    def make_classification(self, in_features, use_ceclustering, use_massclustering):
+        print(f"Creating classification model with the following opts: use cec={use_ceclustering} use mass = {use_massclustering}")
         if use_ceclustering:
+            print(f"Creating CEClustering classification model")
             return nn.Sequential(
                 # nn.Sigmoid(),
                 # nn.Linear(in_features, self.ce_dim_count),
 
                 nn.Sigmoid(),
                 CEClustering(
+                    # n_dim=self.ce_dim_count,
+                    n_dim=in_features,
+                    n_clusters=self.num_classes,
+                    # init_radius=self.ce_init_radius
+                ),
+            )
+        elif use_massclustering:
+            print(f"Creating mass clustering classification model")
+            return nn.Sequential(
+                # nn.Sigmoid(),
+                # nn.Linear(in_features, self.ce_dim_count),
+
+                nn.Sigmoid(),
+                MassClustering(
                     # n_dim=self.ce_dim_count,
                     n_dim=in_features,
                     n_clusters=self.num_classes,
@@ -331,6 +349,7 @@ def resnet56(
     num_classes = 10,
     init_radius = 0.2,
     ce_n_dim = 5,
+    massclusterong = False,
     ) -> ResNet:
     return ResNet(
         BottleNeckBlock, [2, 4, 6, 5, 3],

@@ -57,5 +57,6 @@ class MassClustering(nn.Module):
         # so i'm just using max distance in the latent space ~ sqrt(2)
 
         # sorta mimicing the gravity force here with G*m1*m2/r^2
-        cluster_forces = self.g_constant * self.cluster_mass / torch.square(input_distances)
+        # cluster_forces = self.g_constant * self.cluster_mass / torch.square(input_distances)
+        cluster_forces = self.g_constant / torch.square(input_distances)
         return cluster_forces

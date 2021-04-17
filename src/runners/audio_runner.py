@@ -37,10 +37,6 @@ class AudioRunner(AbstractRunner):
         self.dataset_provider = dataset_provider
         self.config = config
         self.spectrogram_generator = SpectrogramGenerator(self.config)
-        model_save_path = run_params.getd(R.MODEL_SAVE_PATH, 'default')
-        model_name = os.path.basename(model_save_path)
-        prefix = f"{tensorboard_prefix}_{model_name}"
-        self.writer = SummaryWriter(self.find_log_folder(prefix), str(datetime.datetime.now()))
         self.train_l, self.train_bs, self.valid_l, self.valid_bs = self.dataset_provider.get_datasets(self.run_params)
 
         
@@ -58,7 +54,7 @@ class AudioRunner(AbstractRunner):
         # Main training loop
         # ////////////////////////////////////////////
         optimizer = self.create_optimizer()
-        sheduler = StepLR(optimizer, step_size=20, gamma=0.1)
+        sheduler = StepLR(optimizer, step_size=5, gamma=0.1)
         criterion = self.create_criterion().to(self.config.run_device)
         epochs_count = int(self.run_params.getd(R.EPOCHS, 10))
         logger.info(f"Using: {epochs_count} epochs")

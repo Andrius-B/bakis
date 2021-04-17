@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 import os
+import numpy as np
 from flask import Flask, flash, request, redirect, url_for
 from werkzeug.utils import secure_filename
 from src.config import Config
@@ -34,19 +35,26 @@ searchify_config.run_device = torch.device("cpu")
 
 spectrogram_generator = SpectrogramGenerator(searchify_config)
 
-run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop10000)")
+run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/top10000_meta_22k)")
 run_params.apply_overrides(
     {
-            # R.DATASET_NAME: 'disk-ds(/home/andrius/git/searchify/resampled_music)',
-            R.DISKDS_NUM_FILES: '9000',
+            R.CLUSTERING_MODEL: 'mass',
+            R.DISKDS_NUM_FILES: '5000',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
             R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
         }
 )
-model, file_list = load_working_model(run_params, "zoo/9000v3finetune", True)
-cluster_positions = model.classification[-1].centroids.clone().detach().to("cpu")
-cluster_sizes = model.classification[-1].cluster_sizes.clone().detach().to("cpu")
-cec_max_dist = model.classification[-1].max_dist
+model, file_list = load_working_model(run_params, "zoo/5000massv1", True)
+model_type = run_params.getd(R.CLUSTERING_MODEL, "cec")
+if model_type == "cec":
+    cluster_positions = model.classification[-1].centroids.clone().detach().to("cpu")
+    cluster_sizes = model.classification[-1].cluster_sizes.clone().detach().to("cpu")
+    cec_max_dist = model.classification[-1].max_dist
+elif model_type == "mass":
+    cluster_positions = model.classification[-1].centroids.clone().detach().to("cpu")
+    cluster_mass = model.classification[-1].cluster_mass.clone().detach().to("cpu")
+    g_constant = model.classification[-1].g_constant.clone().detach().to("cpu")
+    mass_max_dist = model.classification[-1].max_dist
 model.save_distance_output = True
 model.train(False)
 model.to(searchify_config.run_device)
@@ -55,16 +63,6 @@ log.info("Loading complete, server ready")
 def allowed_file(filename):
     _, file_extension = os.path.splitext(filename)
     return file_extension[1:] in ALLOWED_EXTENSIONS
-
-def render_output_page(model_output, total_samples):
-    rendered = f"<div><h2>Samples taken from provided file: {total_samples}</h2></div>"
-    sorted_output = dict(sorted(model_output.items(), key=lambda item: item[1]["samplesOf"], reverse=True))
-    log.info(f"model output (post-sort): {json.dumps(sorted_output, indent=4)}")
-    rendered += "<ol>"
-    for idx in sorted_output:
-        rendered += f"<li>({idx}) \"{sorted_output[idx]['filename']}\" - {sorted_output[idx]['samplesOf']/total_samples:.1%}</li>"
-    rendered += "</ol>"
-    return rendered
 
 @app.route('/searchify', methods=['GET', 'POST'])
 def upload_file():
@@ -139,10 +137,14 @@ def upload_file():
                 log.info(f"Output centroid positions shape: {sample_output_centroid_positions.shape}")
                 log.info(f"")
                 sample_distances_to_clusters = {}
+                if model_type == "mass":
+                    average_cluster_mass = 0
+                    for track_idx in topk_classes_to_evaluate.numpy():
+                        average_cluster_mass += float(cluster_mass[int(track_idx)].item())
+                    average_cluster_mass = average_cluster_mass / len(topk_classes_to_evaluate)
                 for track_idx in topk_classes_to_evaluate.numpy():
                     track_idx = int(track_idx)
                     track_norm_space_position = cluster_positions[track_idx]
-                    track_cluster_size = float(cluster_sizes[track_idx])
 
                     track_cluster_position_repeated = track_norm_space_position.repeat(sample_output_centroid_positions.shape[-2], 1)
                     # log.info(f"Repeated track cluster position: {track_cluster_position_repeated.shape} should be: {sample_output_centroid_positions.shape}")
@@ -152,13 +154,22 @@ def upload_file():
                     # log.info(f"Absolute output distances: {abs_output_distances}")
                     output_distances = torch.norm(abs_output_distances, p=2, dim=-1)
                     # log.info(f"Normed output distances: {output_distances}")
-                    output_distances = torch.div(output_distances, cec_max_dist)
-                    output_distances = torch.mul(output_distances, torch.div(1, track_cluster_size))
-                    output_distances = torch.pow(output_distances, 2)
+                    if model_type == "cec":
+                        track_cluster_size = float(cluster_sizes[track_idx])
+                        output_distances = torch.div(output_distances, cec_max_dist)
+                        output_distances = torch.mul(output_distances, torch.div(1, track_cluster_size))
+                        output_distances = torch.pow(output_distances, 2)
+                        mean_output_distance_for_track = torch.mean(output_distances)
+                        sample_distances_to_clusters[track_idx] = mean_output_distance_for_track.item()
+                    elif model_type == "mass":
+                        track_cluster_size = float(cluster_mass[track_idx])
+                        output_distances = torch.div(output_distances, mass_max_dist)
+                        cluster_forces = (g_constant * track_cluster_size  * average_cluster_mass)/ torch.square(output_distances)
+                        mean_force_for_track = torch.mean(cluster_forces)
+                        # log.info(f"Mean stats for samples to track {track_idx}:\tr={torch.mean(output_distances)} f={mean_force_for_track.item()} r_min={torch.min(output_distances).item()} f_min={torch.min(cluster_forces).item()} r_max={torch.max(output_distances).item()} f_max={torch.max(cluster_forces).item()}")
+                        sample_distances_to_clusters[track_idx] = -mean_force_for_track.item()
                     # output_distances = torch.mul(output_distances, torch.div(1, track_cluster_size))
                     # log.info(f"Output distances: {output_distances.shape} -- \n {output_distances}")
-                    mean_output_distance_for_track = torch.quantile(output_distances, 0.5)
-                    sample_distances_to_clusters[track_idx] = mean_output_distance_for_track.item()
                 sorted_sample_avg_distances_to_clusters = dict(sorted(sample_distances_to_clusters.items(), key=lambda item: item[1], reverse=False))
                 graph_nodes = [GraphNode(-1, "Provided sample audio", float(0))]
                 graph_links = []
@@ -166,9 +177,13 @@ def upload_file():
                 for track_idx in sorted_sample_avg_distances_to_clusters:
                     track_name = os.path.basename(file_list[track_idx])
                     track_name, _ = os.path.splitext(track_name)
-                    graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_sizes[track_idx].item())))
+                    if model_type == "cec":
+                        graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_sizes[track_idx].item())))
+                        log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_size={cluster_sizes[track_idx].item()}")
+                    elif model_type == "mass":
+                        graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_mass[track_idx].item())))
+                        log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_mass={cluster_mass[track_idx].item()}")
                     graph_links.append(GraphLink(-1, track_idx, float(sorted_sample_avg_distances_to_clusters[track_idx])))
-                    log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_size={cluster_sizes[track_idx].item()}")
                 
                 topn_links = []
                 for source_idx in sorted_sample_avg_distances_to_clusters:
@@ -179,16 +194,29 @@ def upload_file():
                         def f(l: GraphLink):
                             return l.source_track_index in indicies and l.target_track_index in indicies
                         if len(list(filter(f, graph_links))) == 0: # if there is no link yet between the two nodes
-                            source_pos = cluster_positions[source_idx]
-                            target_pos = cluster_positions[target_idx]
-                            source_size = cluster_sizes[source_idx]
-                            target_size = cluster_sizes[target_idx]
-                            abs_output_distances = source_pos - target_pos
-                            output_distances = torch.norm(abs_output_distances, p=2, dim=-1)
-                            link_distance = torch.div(output_distances, cec_max_dist)
-                            link_distance = torch.pow(link_distance, 2)
-                            # log.info(f"Link distance between {source_idx} and {target_idx}: {link_distance}")
-                            topn_links.append(GraphLink(int(source_idx), int(target_idx), float(link_distance.item())))
+                            if model_type == "cec":
+                                source_pos = cluster_positions[source_idx]
+                                target_pos = cluster_positions[target_idx]
+                                source_size = cluster_sizes[source_idx]
+                                target_size = cluster_sizes[target_idx]
+                                abs_output_distance = source_pos - target_pos
+                                output_distances = torch.norm(abs_output_distance, p=2, dim=-1)
+                                link_distance = torch.div(output_distances, cec_max_dist)
+                                link_distance = torch.pow(link_distance, 2)
+                                # log.info(f"Link distance between {source_idx} and {target_idx}: {link_distance}")
+                                topn_links.append(GraphLink(int(source_idx), int(target_idx), float(link_distance.item())))
+                            elif model_type == "mass":
+                                source_pos = cluster_positions[source_idx]
+                                target_pos = cluster_positions[target_idx]
+                                source_mass = cluster_mass[source_idx]
+                                target_mass = cluster_mass[target_idx]
+                                abs_output_distance = source_pos - target_pos
+                                output_distances = torch.norm(abs_output_distance, p=2, dim=-1)
+                                link_distance = torch.div(output_distances, mass_max_dist)
+                                cluster_force = (g_constant * source_mass * target_mass) / torch.square(link_distance)
+                                # log.info(f"Mean stats for {source_idx} -> {target_idx}:\tr={link_distance.item()} f={cluster_force.item()}")
+                                # logging.info(f"Cluster force: {cluster_force}")
+                                topn_links.append(GraphLink(int(source_idx), int(target_idx), float(-cluster_force.item())))
                 # add links between other top-n tracks
                 if(query_fully_connected_graph):
                     graph_links.extend(topn_links)
@@ -206,7 +234,14 @@ def upload_file():
                         current_node_links = list(filter(f, graph_links))
                         if len(current_node_links) < N*2: # twice, because we are counting links for both target and source
                             graph_links.append(topn_link)
-
+                if model_type == "mass":
+                    link_distances = []
+                    for link in graph_links:
+                        link_distances.append(link.distance)
+                    np_link_distances = np.array(link_distances)
+                    min_distance = np.min(np_link_distances)
+                    for link in graph_links:
+                        link.distance = link.distance - min_distance
                 final_graph = GraphData(graph_nodes, graph_links, total_samples)
                 return final_graph.json()
 

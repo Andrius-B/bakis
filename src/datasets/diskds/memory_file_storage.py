@@ -29,13 +29,6 @@ class MemoryFileDiskStorage(BaseDataset):
         features: List[str] = ["metadata"],
         config: Config = Config()
     ):
-        if window_generation_strategy is None:
-            self.window_generation_strategy = UniformReadWindowGenerationStrategy(
-                overread=1.1, window_len=int(run_params.getd(R.DISKDS_WINDOW_LENGTH, 2**16)),
-                window_hop=int(run_params.getd(R.DISKDS_WINDOW_HOP_TRAIN, 2**15))
-            )
-        else:
-            self.window_generation_strategy = window_generation_strategy
         self.memory_file = memory_file
         log.info(f"Memory file passed to storage has: {self.memory_file}")
         if isinstance(memory_file, str):
@@ -48,6 +41,15 @@ class MemoryFileDiskStorage(BaseDataset):
             self.disk_file.write(self.memory_file.read())
             log.info(f"Memory file dumped to: {self.disk_file.name}")
         info = torchaudio.backend.sox_io_backend.info(self.disk_file.name)
+        if window_generation_strategy is None:
+            self.window_generation_strategy = UniformReadWindowGenerationStrategy(
+                overread=1.1, window_len=int(run_params.getd(R.DISKDS_WINDOW_LENGTH, 2**16)),
+                window_hop=int(run_params.getd(R.DISKDS_WINDOW_HOP_TRAIN, 2**15))
+            )
+        else:
+            self.window_generation_strategy = window_generation_strategy
+        self.sampling_overread_required = (info.sample_rate / config.sample_rate)
+        log.info(f"Determined that sample rate change will change window length, therefore will read {self.sampling_overread_required}x more samples")
         log.info(f"Received file metadata: {info.__dict__}")
         self._file_array = [self.disk_file.name]
         self._length = -1
@@ -55,7 +57,7 @@ class MemoryFileDiskStorage(BaseDataset):
         log.info(f"Generated windows: {len(self.windows)}")
         self._features = features
         self._config = config
-        self.sox_effects = FileLoadingSoxEffects(random_pre_resampling=False)
+        self.sox_effects = FileLoadingSoxEffects(initial_sample_rate=info.sample_rate, final_sample_rate=config.sample_rate,random_pre_resampling=False)
 
     def __len__(self):
         return len(self.windows)
@@ -85,20 +87,25 @@ class MemoryFileDiskStorage(BaseDataset):
             raise AttributeError(f"Unknown type of window: {type(window)}")
         win_len_frames = int(duration)
         # the sox_io_backend is slow as fuuuuuu, I can't update
+        overread = self.sampling_overread_required * 1.3
+        final_offset = offset - (win_len_frames*(overread-1))
+        final_offset = max(0, final_offset)
         samples, sample_rate = torchaudio.backend.sox_backend.load(
             filepath = window.get_filepath(),
-            offset = int(offset),
-            num_frames = win_len_frames,
+            offset = int(final_offset),
+            num_frames = int(win_len_frames * self.sampling_overread_required * 1.3),
 
         )
+        # log.info(f"Samples before sox effects: {samples.shape}")
         samples, sample_rate = self.sox_effects(samples)
+        # log.info(f"Samples after sox effects: {samples.shape}")
         samples = samples.float().reshape((1,  -1))
         try:
             samples = samples.narrow(1, 0, win_len_frames) # make the float error less prominent by reading a round amount of frames
         except RuntimeError:
             log.error(f"Failed loading a sample from: {window.get_filepath()} at: {int(offset)}")
             log.error(f"Window: {window.__dict__}")
-            #14467446 14467072
+            log.error(f"Failed narrowing samples from {samples.shape} to (1, 0, {win_len_frames})")
         samples = samples.reshape((1, -1)).float().to(self._config.dataset_device)
         w_start = offset,
         w_end = offset + duration

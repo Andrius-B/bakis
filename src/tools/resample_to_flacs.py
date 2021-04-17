@@ -5,8 +5,11 @@ import argparse
 from typing import Callable, List, Tuple
 from tqdm import tqdm
 from src.tools.base_tool import BaseTool
+from mutagen.id3 import ID3
+import logging
 import pathlib
 
+log = logging.getLogger(__name__)
 
 class Resampler():
     def iterate_audio_files(self, directory, extensions):
@@ -19,9 +22,26 @@ class Resampler():
                     yield filepath
 
 
+    def copy_id3_tags(self, source_filepath: str, dest_filepath: str):
+        try:
+            tags = ID3(source_filepath, translate=False)
+        except mutagen.id3.ID3NoHeaderError:
+            log.error(f"No ID3 header found in {src_file}")
+            return
+        except Exception as err:
+            log.error(f"Exception occured while reading id3 tags from {source_filepath}")
+            log.exception(err)
+            return
+        try:
+            tags.save(dest_filepath)
+        except Exception as err:
+            log.error(f"Exception occured while writing id3 tags from {source_filepath} to {dest_filepath}")
+            log.exception(err)
+            return
+
     def transcode_file(
         self, src_file, output_dir, fmt,
-        channels, mp3_q, sample_rate, pbar
+        channels, mp3_q, sample_rate, should_copy_id3, pbar
         ) -> Tuple[Popen, Callable]:
         launch_command = ["sox", "--norm"]
         file = os.path.basename(src_file)
@@ -45,11 +65,14 @@ class Resampler():
             stdout = stdout.decode('utf-8')
             stderr = stderr.decode('utf-8')
             if(len(stdout) > 0 or len(stderr) > 0):
-                print(f"Output from resampling: {file}")
-                print("========STDOUT=====")
-                print(stdout)
-                print("========STDERR=====")
-                print(stderr)
+                log.error(f"Output from resampling: {file}")
+                log.error("========STDOUT=====")
+                log.error(stdout)
+                log.error("========STDERR=====")
+                log.error(stderr)
+            else:
+                if should_copy_id3:
+                    self.copy_id3_tags(src_file, output_file)
         return (transcode_p, complete)
 
 
@@ -98,6 +121,11 @@ class Resampler():
             help="How many resamping processes to run simultaniuosly",
             default="1"
         )
+        parser.add_argument(
+            "--copy-id3",
+            help="Should the id3 tags from source be copied to dest? only available for mp3 files atm.",
+            action="store_true"
+        )
         return parser
 
     def run(self, args):
@@ -109,13 +137,14 @@ class Resampler():
         sample_rate = int(args.sample_rate)
         mp3_q = str(float(args.mp3_q))
         num_processes = int(args.processes)
+        copy_id3 = bool(args.copy_id3)
         pathlib.Path(dest).mkdir(parents=True, exist_ok=True)
-        print(f"Starting resampler from {args.src_dir} to {args.dest_dir}")
+        log.info(f"Starting resampler from {args.src_dir} to {args.dest_dir}")
         l = sum([1 for _ in self.iterate_audio_files(src, extensions)])
         it = tqdm(self.iterate_audio_files(src, extensions), total=l)
         queue:List[Tuple[Popen,Callable]] = []
         for file in it:
-            it.write(f"Transcoding file to: {dest}")
+            it.write(f"Transcoding file: {file}")
             future = self.transcode_file(
                 src_file=file,
                 output_dir=dest,
@@ -123,6 +152,7 @@ class Resampler():
                 channels=channels,
                 mp3_q=mp3_q,
                 sample_rate=sample_rate,
+                should_copy_id3=copy_id3,
                 pbar=it,
                 )
             if future is None:

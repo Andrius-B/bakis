@@ -2,7 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 import os
 import numpy as np
-from flask import Flask, flash, request, redirect, url_for
+from flask import Flask, flash, request, redirect, url_for, send_file, abort
 from werkzeug.utils import secure_filename
 from src.config import Config
 from src.datasets.diskds.memory_file_storage import MemoryFileDiskStorage
@@ -15,6 +15,8 @@ from src.models.working_model_loader import *
 from torch.utils.data import DataLoader
 from src.server.dto import *
 from mutagen.easyid3 import EasyID3
+from mutagen.id3 import ID3
+from io import BytesIO
 import json
 import io
 import torch
@@ -36,17 +38,18 @@ searchify_config.run_device = torch.device("cpu")
 
 spectrogram_generator = SpectrogramGenerator(searchify_config)
 
-run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/top10000_meta_22k)")
+run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/top10000_meta_22k2)")
 run_params.apply_overrides(
     {
             R.CLUSTERING_MODEL: 'mass',
             R.DISKDS_NUM_FILES: '5000',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
-            R.DISKDS_WINDOW_HOP_TRAIN: str((2**14)),
+            R.DISKDS_WINDOW_HOP_TRAIN: str((2**15)),
         }
 )
 model, file_list = load_working_model(run_params, "zoo/5000massv1", True)
 model_type = run_params.getd(R.CLUSTERING_MODEL, "cec")
+send_metadata = True
 if model_type == "cec":
     cluster_positions = model.classification[-1].centroids.clone().detach().to("cpu")
     cluster_sizes = model.classification[-1].cluster_sizes.clone().detach().to("cpu")
@@ -65,16 +68,53 @@ def allowed_file(filename):
     _, file_extension = os.path.splitext(filename)
     return file_extension[1:] in ALLOWED_EXTENSIONS
 
-def read_metadata(track_idx: int):
+def read_file_metadata(track_idx: int):
     filepath = file_list[track_idx]
     audioFile = EasyID3(filepath)
-    return {
-        'title': audioFile['title'],
-        'artist': audioFile['artist'],
-        'album': audioFile['album'],
-        'genre': audioFile['genre'],
-        'date': audioFile['date'],
+    def read_property(key):
+        try:
+            return audioFile[key][0]
+        except Exception as err:
+            log.error(f"Failed loading metadata property `{key}` from id3 of {filepath}")
+            log.exception(err) 
+            return None
+    keys = {
+        'title': 'title',
+        'artist': 'artist',
+        'album': 'album',
+        'genre': 'genre',
+        'date': 'date',
+        'yt_link': 'musicip_fingerprint',
+        'spotify_uri': 'acoustid_fingerprint',
     }
+    metadata = {}
+    for name in keys:
+        value = read_property(keys[name])
+        if value is not None:
+            metadata[name] = value
+    return metadata
+
+@app.route('/cover', methods=['GET'])
+def get_cover():
+    if "track_idx" not in request.args:
+        log.error(f"track_idx param not found!")
+        abort(404)
+    track_idx = int(request.args["track_idx"])
+    if track_idx < 0 or track_idx > len(file_list):
+        log.error(f"track_idx out of range: should be 0 < {track_idx} < {len(file_list)}")
+        abort(404)
+    filepath = file_list[track_idx]
+    log.info(f"Looking for cover picture in id3 of : {filepath}")
+    id3 = ID3(filepath)
+    picture_apic = id3.getall("APIC")[0]
+    if picture_apic is None:
+        log.error(f"APIC not found on the requested file {filepath}")
+        log.error(f"Found the following id3 info:\n{id3.pprint()}")
+        abort(404)
+    picture_bytes = picture_apic.data
+    picture_file = BytesIO(picture_bytes)
+    return send_file(picture_file, mimetype=picture_apic.mime)
+    
 
 @app.route('/searchify', methods=['GET', 'POST'])
 def upload_file():
@@ -122,7 +162,7 @@ def upload_file():
             total_samples = 0
             topk = query_topn
             with MemoryFileDiskStorage(memory_file, format=file_extension[1:], run_params=run_params, features=["data"]) as memory_storage:
-                loader = DataLoader(memory_storage, shuffle=False, batch_size=5, num_workers=0)
+                loader = DataLoader(memory_storage, shuffle=False, batch_size=80, num_workers=0)
                 top1_answers = torch.tensor([])
                 for item_data in loader:
                     with torch.no_grad():
@@ -183,17 +223,17 @@ def upload_file():
                     # output_distances = torch.mul(output_distances, torch.div(1, track_cluster_size))
                     # log.info(f"Output distances: {output_distances.shape} -- \n {output_distances}")
                 sorted_sample_avg_distances_to_clusters = dict(sorted(sample_distances_to_clusters.items(), key=lambda item: item[1], reverse=False))
-                graph_nodes = [GraphNode(-1, "Provided sample audio", float(0))]
+                graph_nodes = [GraphNode(-1, "Provided sample audio", float(0), None)]
                 graph_links = []
                 log.info("Found the following recommendataions:")
                 for track_idx in sorted_sample_avg_distances_to_clusters:
                     track_name = os.path.basename(file_list[track_idx])
                     track_name, _ = os.path.splitext(track_name)
                     if model_type == "cec":
-                        graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_sizes[track_idx].item())))
+                        graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_sizes[track_idx].item()), None))
                         log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_size={cluster_sizes[track_idx].item()}")
                     elif model_type == "mass":
-                        graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_mass[track_idx].item())))
+                        graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_mass[track_idx].item()), None))
                         log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_mass={cluster_mass[track_idx].item()}")
                     graph_links.append(GraphLink(-1, track_idx, float(sorted_sample_avg_distances_to_clusters[track_idx])))
                 
@@ -254,6 +294,11 @@ def upload_file():
                     min_distance = np.min(np_link_distances)
                     for link in graph_links:
                         link.distance = link.distance - min_distance
+                if send_metadata:
+                    for node in graph_nodes:
+                        if node.track_idx >= 0:
+                            metadata = read_file_metadata(node.track_idx)
+                            node.metadata = metadata
                 final_graph = GraphData(graph_nodes, graph_links, total_samples)
                 return final_graph.json()
 

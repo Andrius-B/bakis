@@ -14,6 +14,7 @@ from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
 from src.models.working_model_loader import *
 from torch.utils.data import DataLoader
 from src.server.dto import *
+from mutagen.easyid3 import EasyID3
 import json
 import io
 import torch
@@ -63,6 +64,17 @@ log.info("Loading complete, server ready")
 def allowed_file(filename):
     _, file_extension = os.path.splitext(filename)
     return file_extension[1:] in ALLOWED_EXTENSIONS
+
+def read_metadata(track_idx: int):
+    filepath = file_list[track_idx]
+    audioFile = EasyID3(filepath)
+    return {
+        'title': audioFile['title'],
+        'artist': audioFile['artist'],
+        'album': audioFile['album'],
+        'genre': audioFile['genre'],
+        'date': audioFile['date'],
+    }
 
 @app.route('/searchify', methods=['GET', 'POST'])
 def upload_file():

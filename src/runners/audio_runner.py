@@ -37,7 +37,10 @@ class AudioRunner(AbstractRunner):
         self.dataset_provider = dataset_provider
         self.config = config
         self.spectrogram_generator = SpectrogramGenerator(self.config)
-        self.writer = SummaryWriter(self.find_log_folder(tensorboard_prefix), str(datetime.datetime.now()))
+        model_save_path = run_params.getd(R.MODEL_SAVE_PATH, 'default')
+        model_name = os.path.basename(model_save_path)
+        prefix = f"{tensorboard_prefix}_{model_name}"
+        self.writer = SummaryWriter(self.find_log_folder(prefix), str(datetime.datetime.now()))
         self.train_l, self.train_bs, self.valid_l, self.valid_bs = self.dataset_provider.get_datasets(self.run_params)
 
         

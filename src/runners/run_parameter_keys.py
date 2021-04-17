@@ -40,6 +40,8 @@ class R:
     # learning rate
     LR = RunParameterKey("lr")
 
+    MODEL_SAVE_PATH = RunParameterKey("model_save_path")
+
     # one of 'batch', 'epoch', 'finished', 'never'
     TRAINING_VALIDATION_MODE = RunParameterKey("training_validation_mode")
 

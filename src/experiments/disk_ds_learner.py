@@ -19,6 +19,7 @@ class DiskDsLearner(BaseExperiment):
             R.DISKDS_NUM_FILES: '5000',
             R.BATCH_SIZE_TRAIN: '75',
             R.CLUSTERING_MODEL: 'mass',
+            R.MODEL_SAVE_PATH: 'zoo/5000massv1',
             R.EPOCHS: '5',
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
@@ -35,7 +36,8 @@ class DiskDsLearner(BaseExperiment):
     def run(self):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
-        model, _ = load_working_model(run_params, 'zoo/5000massv1')
+        model_save_path = run_params.get(R.MODEL_SAVE_PATH)
+        model, _ = load_working_model(run_params, model_save_path)
         model.to("cpu")
         summary(model, (1, 64, 128), device="cpu")
 
@@ -44,7 +46,7 @@ class DiskDsLearner(BaseExperiment):
         runner.train()
         # torch.save(model, net_save_path)
         # ce_clustering_loader.save(model.classification[-1], cec_save_path, file_list)
-        save_working_model(model, run_params, 'zoo/5000massv1')
+        save_working_model(model, run_params, model_save_path)
         
 
     def help_str(self):

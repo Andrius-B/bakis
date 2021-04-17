@@ -349,7 +349,7 @@ def resnet56(
     num_classes = 10,
     init_radius = 0.2,
     ce_n_dim = 5,
-    massclusterong = False,
+    massclustering = False,
     ) -> ResNet:
     return ResNet(
         BottleNeckBlock, [2, 4, 6, 5, 3],
@@ -357,6 +357,7 @@ def resnet56(
         num_classes = num_classes,
         ce_init_radius = init_radius,
         ce_dim_count=ce_n_dim,
+        use_massclustering = massclustering,
         )
 
 

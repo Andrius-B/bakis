@@ -35,10 +35,13 @@ def load_working_model(
 ):
     """A utility to load a working model"""
     clustering_model_type = run_params.getd(R.CLUSTERING_MODEL, "cec")
+    is_cec = clustering_model_type == "cec"
+    is_mass = clustering_model_type == "mass"
+    log.info(f"with clustering model setting = {clustering_model_type} is_cec={is_cec} is_mass={is_mass}")
     model_new = resnet56(
-        ceclustering = (clustering_model_type == "cec"),
+        ceclustering = is_cec,
         num_classes = int(run_params.get(R.DISKDS_NUM_FILES)),
-        massclusterong = (clustering_model_type == "mass")
+        massclustering = is_mass
         )
     log.info(f"Created a new model for loading data into with classification: {model_new.classification}")
     model = model_new

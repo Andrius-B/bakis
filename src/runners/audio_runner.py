@@ -54,7 +54,7 @@ class AudioRunner(AbstractRunner):
         # Main training loop
         # ////////////////////////////////////////////
         optimizer = self.create_optimizer()
-        sheduler = StepLR(optimizer, step_size=5, gamma=0.1)
+        sheduler = StepLR(optimizer, step_size=15, gamma=0.1)
         criterion = self.create_criterion().to(self.config.run_device)
         epochs_count = int(self.run_params.getd(R.EPOCHS, 10))
         logger.info(f"Using: {epochs_count} epochs")
@@ -134,7 +134,7 @@ class AudioRunner(AbstractRunner):
                         self.writer.add_scalars('validation_metrics', valid_metrics, global_step=iteration)
                         validation_summary = f"validation acc: top-1={top_one:.3%} top-{k}={top_k:.3%}"
                         pbar.set_description(f"{training_summary} | {validation_summary}")
-                        sheduler.step(running_loss/(i+1))
+                        sheduler.step()
                 torch.save(self.model.state_dict(), "net.pth")
             except KeyboardInterrupt as e:
                 temp_file = "net_c.pth"

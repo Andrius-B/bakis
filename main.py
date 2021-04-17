@@ -3,6 +3,7 @@ from typing import Callable
 from src.config import Config
 from src.experiments.register import ExperimentRegistry
 from src.tools.resample_to_flacs import Resampler
+from src.tools.random_copy import RandomCopy
 
 experiment_registry = ExperimentRegistry()
 
@@ -24,6 +25,13 @@ def configure_resampler_parser(parser):
         resampler.run(args)
     parser.set_defaults(func=run)
 
+def configure_copier_parser(parser):
+    copier = RandomCopy()
+    copier.configure_argument_parser(parser)
+    def run(args):
+        copier.run(args)
+    parser.set_defaults(func=run)
+
 if __name__=="__main__":
     Config()
     parser = argparse.ArgumentParser()
@@ -36,6 +44,10 @@ if __name__=="__main__":
     # resampler parser
     resampler_parser = subparsers.add_parser("resample", help="Run resampler")
     configure_resampler_parser(resampler_parser)
+
+    # copier parser
+    copier_parser = subparsers.add_parser("copy", help="Run random copying tool")
+    configure_copier_parser(copier_parser)
 
     args = parser.parse_args()
     if hasattr(args, 'func'):

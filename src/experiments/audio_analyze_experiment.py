@@ -82,10 +82,6 @@ class AudioAnalyzeExperiment(BaseExperiment):
         )
         fig.write_html('t-sne.html', auto_open=True)
 
-
-    def load_cec_from_csv(self, csv_path) -> (CEClustering, List[str]):
-        pass
-
     def get_experiment_default_parameters(self):
         return {
             R.CLUSTERING_MODEL: 'mass',

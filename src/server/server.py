@@ -38,17 +38,17 @@ searchify_config.run_device = torch.device("cpu")
 spectrogram_generator = SpectrogramGenerator(searchify_config)
 
 # Note to self: Remember to change the global net sampling rate to correspond to the dataset.
-run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/top10000_meta_22k2)")
+run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/final22k/train)")
 # run_params = RunParameters("disk-ds(/media/andrius/FastBoi/bakis_data/spotifyTop10000)")
 run_params.apply_overrides(
     {
         R.CLUSTERING_MODEL: 'mass',
-        R.DISKDS_NUM_FILES: '100',
+        R.DISKDS_NUM_FILES: '9500',
         R.DISKDS_WINDOW_LENGTH: str((2**17)),
         R.DISKDS_WINDOW_HOP_TRAIN: str((2**15)),
     }
 )
-model, file_list = load_working_model(run_params, "zoo/100massv1", True)
+model, file_list = load_working_model(run_params, "zoo/9500massv1", True)
 model_type = run_params.getd(R.CLUSTERING_MODEL, "cec")
 send_metadata = True
 if model_type == "cec":

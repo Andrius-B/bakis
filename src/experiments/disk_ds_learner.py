@@ -18,7 +18,7 @@ class DiskDsLearner(BaseExperiment):
             R.DISKDS_NUM_FILES: '9500',
             R.BATCH_SIZE_TRAIN: '75',
             R.CLUSTERING_MODEL: 'mass',
-            R.MODEL_SAVE_PATH: 'zoo/9500linv1',
+            R.MODEL_SAVE_PATH: 'zoo/9500massv2',
             R.EPOCHS: '40',
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
@@ -36,12 +36,12 @@ class DiskDsLearner(BaseExperiment):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
         model_save_path = run_params.get(R.MODEL_SAVE_PATH)
-        # model, _ = load_working_model(run_params, model_save_path)
-        model = resnet56(
-            num_classes=9500,
-            ceclustering = False,
-            massclustering = False,
-        )
+        model, _ = load_working_model(run_params, model_save_path)
+        # model = resnet56(
+        #     num_classes=9500,
+        #     ceclustering = False,
+        #     massclustering = False,
+        # )
         log.info(f"Loaded classification model: {model.classification}")
         model.to("cpu")
         summary(model, (1, 64, 128), device="cpu")

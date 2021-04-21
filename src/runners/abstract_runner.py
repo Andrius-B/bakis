@@ -2,6 +2,8 @@ import torch
 from torch import nn
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader
+from typing import Tuple
 import os
 import datetime
 import logging
@@ -65,6 +67,7 @@ class AbstractRunner:
             metrics = {}
             pbar = tqdm(enumerate(train_l, 0), total=len(train_l), leave=True)
             for i, data in pbar:
+                self.model.train(mode=True)
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
 
@@ -95,10 +98,65 @@ class AbstractRunner:
                 self.writer.add_scalars('train_metrics', metrics, global_step=iteration)
                 iteration += 1
                 # print statistics
-                
-                pbar.set_description(f'[{epoch + 1}, {i + 1:03d}] loss: {running_loss/(i+1):.3f} | acc: {predicted_correctly/predicted_total:.3%}')
+                train_stats = f'[{epoch + 1}, {i + 1:03d}] loss: {running_loss/(i+1):.3f} | acc: {predicted_correctly/predicted_total:.3%}'
+                pbar.set_description(train_stats)
+                if i == len(train_l) - 1:
+                    top_one, top_n = self.get_validation_accuracy(self.model, valid_l, self.config, topn=5)
+                    valid_metrics = {
+                        'top1': top_one,
+                        f'top{5}': top_n
+                    }
+                    self.writer.add_scalars('validation_metrics', valid_metrics, global_step=iteration)
+                    validation_stats = f"{train_stats} | top1: {top_one:.3%} | top5: {top_n:.3%}"
+                    pbar.set_description(validation_stats)
             torch.save(self.model.state_dict(), "net.pth")
         print('Finished Training')
+
+    def get_validation_accuracy(
+        self,
+        net: nn.Module,
+        valid_loader: DataLoader,
+        config: Config,
+        topn:int = 5,
+    ) -> Tuple[float, float]:
+        net.train(mode=False)
+        predicted_correctly = 0
+        predicted_total = 0
+        predicted_correctly_topk = 0
+        num_batches = len(valid_loader)
+        with torch.no_grad():
+            pbar2 = tqdm(enumerate(valid_loader), total=num_batches, leave=False)
+            for _, data in pbar2:
+                inputs, labels = data
+                inputs = inputs.to(config.run_device)
+
+                # forward + backward + optimize
+                output = self.model(inputs).detach()
+                yb = labels.to(config.run_device).detach()
+
+                cats = output
+                top_cats = cats.topk(topn)
+                target_expanded = yb.view((yb.shape[-1], 1)).expand_as(top_cats.indices).detach()
+                topk_correct = target_expanded.eq(top_cats.indices)
+                # print("==============")
+                # print(f"Cats shape: {cats.shape}")
+                # print(f"top_cats shape: {top_cats.indices}")
+                # print(f"Target: {target_expanded}")
+                # print(f"Categories equal: {topk_correct}")
+                # print(f"TOP-N correct in batch: {topk_correct.sum()}")
+                predicted_correctly_topk += topk_correct.sum().item()
+                output_cat = torch.argmax(output, dim=1)
+                target = yb.detach().view(-1)
+                diff = (target - output_cat).detach()
+                correct_predictions_in_batch = (diff == 0).sum().item()
+                predicted_total += len(target)
+                predicted_correctly += correct_predictions_in_batch
+                validation_summary = f"running validation accuracy: TOP-1:{predicted_correctly/predicted_total:.3%}, TOP-{topn}:{predicted_correctly_topk/predicted_total:.3%}"
+                pbar2.set_description(validation_summary)
+            pbar2.close()
+        top_one_acc = predicted_correctly/predicted_total
+        topk_acc = predicted_correctly_topk/predicted_total
+        return (top_one_acc, topk_acc)
     
     def validate_params(self):
         self.run_params.validate_params()

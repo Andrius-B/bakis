@@ -3,6 +3,7 @@ from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.models.res_net_akamaster import *
+from torchsummary import summary
 
 class CECvsLinearExperiment(BaseExperiment):
 
@@ -12,22 +13,28 @@ class CECvsLinearExperiment(BaseExperiment):
             R.EPOCHS: '50',
             R.NUM_CLASSES: '100',
             R.MEASUREMENTS: 'loss, accuracy',
+            R.LR: str(1e-3),
+            R.TRAINING_VALIDATION_MODE: 'epoch',
         }
 
     def run(self):
         run_params = super().get_run_params()
-        num_classes = int(run_params.getd('num_classes', '100'))
-        for i in range(15):
-            net = resnet20(ceclustering=True, num_classes=num_classes)
-            runner = AbstractRunner(net, run_params, tensorboard_prefix='cec')
-            runner.train()
+        num_classes = int(run_params.getd(R.NUM_CLASSES, '100'))
+        # for i in range(15):
+        net = resnet32(ceclustering=False, num_classes=num_classes, massclustering=True)
+        net.to("cuda")
+        summary(net, (3, 32, 32))
+        runner = AbstractRunner(net, run_params, tensorboard_prefix='cifar_mass')
+        runner.train()
 
         run_params = super().get_run_params()
-        num_classes = int(run_params.getd('num_classes', '100'))
-        for i in range(15):
-            net = resnet20(ceclustering=False, num_classes=num_classes)
-            runner = AbstractRunner(net, run_params, tensorboard_prefix='lin')
-            runner.train()
+        num_classes = int(run_params.getd(R.NUM_CLASSES, '100'))
+        # for i in range(15):
+        net = resnet32(ceclustering=False, num_classes=num_classes)
+        net.to("cuda")
+        summary(net, (3, 32, 32))
+        runner = AbstractRunner(net, run_params, tensorboard_prefix='cifar_lin')
+        runner.train()
 
     def help_str(self):
         return """This experiment runs a comparison: CEClustering vs Linear

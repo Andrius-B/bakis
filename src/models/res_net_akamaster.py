@@ -28,6 +28,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from src.models.ceclustering import CEClustering
+from src.models.mass_clustering import MassClustering
 
 from torch.autograd import Variable
 
@@ -84,28 +85,23 @@ class ResNet(nn.Module):
             block,
             num_blocks,
             use_ceclustering=True,
+            use_massclustering=False,
             num_classes=10,
-            ce_init_radius = 0.4,
+            ce_init_radius = 1,
             ce_dim_count = 5
         ):
         super(ResNet, self).__init__()
-        self.in_planes = 16
+        self.in_planes = 8
         self.num_classes= num_classes
         self.ce_init_radius = ce_init_radius
         self.ce_dim_count = ce_dim_count
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
-        self.classification = self.make_classification(use_ceclustering)
-        # self.classification = nn.Linear(64, 10)
-        # self.classification = nn.Sequential(
-        #     nn.Linear(64, 5),
-        #     nn.Sigmoid(),
-        #     CEClustering(5, num_classes),
-        #     nn.Sigmoid()
-        # )
+        self.conv1 = nn.Conv2d(3, 8, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(8)
+        self.layer1 = self._make_layer(block, 8, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 16, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 32, num_blocks[2], stride=2)
+        self.layer4 = self._make_layer(block, 64, num_blocks[2], stride=2)
+        self.classification = self.make_classification(use_ceclustering, use_massclustering)
 
         self.apply(_weights_init)
 
@@ -123,6 +119,7 @@ class ResNet(nn.Module):
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
+        out = self.layer4(out)
         # print(f"Output after resnet: {out.shape}")
         out = F.avg_pool2d(out, out.size()[3])
         # print(f"Output after pool: {out.shape}")
@@ -132,17 +129,22 @@ class ResNet(nn.Module):
         # out = torch.sigmoid(out)
         return out
     
-    def make_classification(self, use_ceclustering):
+    def make_classification(self, use_ceclustering, use_massclustering):
         if use_ceclustering:
             return nn.Sequential(
-                # nn.Linear(64, self.ce_dim_count),
                 nn.Sigmoid(),
                 CEClustering(
                     n_dim=64,
                     n_clusters=self.num_classes,
                     init_radius=self.ce_init_radius
                 ),
-                nn.Sigmoid()
+                # nn.Sigmoid()
+            )
+        elif use_massclustering:
+            return nn.Sequential(
+                # nn.Linear(64, self.ce_dim_count),
+                nn.Sigmoid(),
+                MassClustering(64, self.num_classes)
             )
         else:
             return nn.Linear(64, self.num_classes)
@@ -153,21 +155,28 @@ def resnet20(
     num_classes = 10,
     init_radius = 0.4,
     ce_n_dim = 5,
+    massclustering = False,
     ):
     return ResNet(
         BasicBlock, [3, 3, 3],
         use_ceclustering=ceclustering,
         num_classes = num_classes,
         ce_init_radius = init_radius,
-        ce_dim_count=ce_n_dim
+        ce_dim_count=ce_n_dim,
+        use_massclustering=massclustering,
         )
 
 
-def resnet32(ceclustering=True, num_classes = 10):
+def resnet32(
+    ceclustering=True,
+    num_classes = 10,
+    massclustering = False,
+    ):
     return ResNet(
         BasicBlock, [5, 5, 5],
         use_ceclustering=ceclustering,
-        num_classes = num_classes
+        num_classes = num_classes,
+        use_massclustering = massclustering,
         )
 
 
@@ -183,7 +192,7 @@ def resnet56(
     ceclustering = True,
     num_classes = 10,
     init_radius = 0.4,
-    ce_n_dim = 5
+    ce_n_dim = 5,
     ):
     return ResNet(
         BasicBlock, [9, 9, 9],

@@ -1,6 +1,9 @@
 from mutagen.id3 import ID3
 from mutagen.easyid3 import EasyID3
 from mutagen.flac import FLAC
+import logging
+
+log = logging.getLogger(__name__)
 
 def read_mp3_metadata(filepath: str):
     audioFile = EasyID3(filepath)
@@ -9,7 +12,7 @@ def read_mp3_metadata(filepath: str):
             return audioFile[key][0]
         except Exception as err:
             log.error(f"Failed loading metadata property `{key}` from id3 of {filepath}")
-            log.exception(err) 
+            # log.exception(err) 
             return None
     keys = {
         'title': 'title',

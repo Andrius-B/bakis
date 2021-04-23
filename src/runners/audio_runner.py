@@ -147,10 +147,6 @@ class AudioRunner(AbstractRunner):
                 logger.exception(e)
         print('Finished Training')
 
-    def test_with_one_sample(self, dx, dy):
-        logger.info("Should run test with a single sample..")
-        logger.info(f"Shape of the sample input: {dx.shape} and sample output: {dy.shape}")
-
     def get_validation_accuracy(
         self,
         net: nn.Module,

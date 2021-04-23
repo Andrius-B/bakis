@@ -13,6 +13,7 @@ from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
 from src.models.working_model_loader import *
 from torch.utils.data import DataLoader
 from src.server.dto import *
+from src.util.mutagen_utils import read_mp3_metadata
 from mutagen.easyid3 import EasyID3
 from mutagen.id3 import ID3
 from io import BytesIO
@@ -71,29 +72,7 @@ def allowed_file(filename):
 
 def read_file_metadata(track_idx: int):
     filepath = file_list[track_idx]
-    audioFile = EasyID3(filepath)
-    def read_property(key):
-        try:
-            return audioFile[key][0]
-        except Exception as err:
-            log.error(f"Failed loading metadata property `{key}` from id3 of {filepath}")
-            log.exception(err) 
-            return None
-    keys = {
-        'title': 'title',
-        'artist': 'artist',
-        'album': 'album',
-        'genre': 'genre',
-        'date': 'date',
-        'yt_link': 'musicip_fingerprint',
-        'spotify_uri': 'acoustid_fingerprint',
-    }
-    metadata = {}
-    for name in keys:
-        value = read_property(keys[name])
-        if value is not None:
-            metadata[name] = value
-    return metadata
+    return read_mp3_metadata(filepath)
 
 @app.route('/cover', methods=['GET'])
 def get_cover():

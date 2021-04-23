@@ -15,6 +15,7 @@ from .show_spectrograms_experiment import ShowSpectrogramsExperiment
 from .gradcam_experiment import GradCAMExperiment
 from .restore_temp_save_to_zoo import RestoreTempSaveToZooExperiment
 from .search_experiment import SearchExperiment
+from .monte_single_file_tester import MonteSingleFileTester
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class ExperimentRegistry:
             'grad-cam': GradCAMExperiment,
             'restore-temp-save-to-zoo': RestoreTempSaveToZooExperiment,
             'search': SearchExperiment,
+            'monte-file-tester': MonteSingleFileTester,
         }
 
     def run_experiment(self, experiment_name: str, parameter_overrides: Dict[str, str]):

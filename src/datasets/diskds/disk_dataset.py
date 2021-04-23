@@ -30,7 +30,7 @@ class DiskDataset(BaseDataset):
             features=["metadata"],
             storage_type=DiskStorage,
             config: Config = Config(),
-            sox_effects = torch.nn.Module,
+            sox_effects: torch.nn.Module = None,
             **kwargs):
         self._disk_storage = storage_type(root_directory, **kwargs)
         self._disk_storage.limit_size(size_limit)

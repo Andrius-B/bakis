@@ -1,4 +1,4 @@
-from data.disk_reader.disk_storage import DiskStorage
+from src.datasets.diskds.disk_storage import DiskStorage
 from typing import Generator, List
 import os
 

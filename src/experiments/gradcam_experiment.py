@@ -6,6 +6,7 @@ from src.runners.run_parameter_keys import R
 from src.models.res_net_akamaster_audio import *
 from src.models.working_model_loader import *
 from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
+from src.datasets.diskds.sox_transforms import FileLoadingSoxEffects
 from src.config import Config
 import torch
 import torchaudio
@@ -22,8 +23,11 @@ class GradCAMExperiment(BaseExperiment):
 
     def get_experiment_default_parameters(self):
          return {
-            R.DATASET_NAME: 'disk-ds(/home/andrius/git/bakis/data/spotifyTop10000)',
-            R.DISKDS_NUM_FILES: '100',
+            R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/final22k/train)',
+            R.DISKDS_NUM_FILES: '9500',
+            R.BATCH_SIZE_TRAIN: '75',
+            R.CLUSTERING_MODEL: 'mass',
+            R.MODEL_SAVE_PATH: 'zoo/9500massv2',
         }
 
     def load_spectrogram(self, filepath, offset_frames, length_frames):
@@ -37,9 +41,11 @@ class GradCAMExperiment(BaseExperiment):
             num_frames=length_frames,
             normalization=False,
         )
-        sample_path = os.path.join(os.path.dirname(filepath), "samples", f"sample_{os.path.basename(filepath)}")
-        torchaudio.backend.sox_backend.save(sample_path, samples, 41000)
-        samples = samples[0] # only take one channel.
+        # sample_path = os.path.join(os.path.dirname(filepath), "samples", f"sample_{os.path.basename(filepath)}")
+        # torchaudio.backend.sox_backend.save(sample_path, samples, 41000)
+        samples = samples[0].view((1, -1)) # only take one channel.
+        log.info(f"loaded samples shape: {samples.shape}")
+        samples, sample_rate = FileLoadingSoxEffects(sample_rate, Config().sample_rate, False).forward(samples)
         samples = samples.view(1,1,-1)
         log.info(f"Loaded samples reshaped to: {samples.shape}")
         raw_samples = samples[0][0].cpu().numpy()
@@ -51,12 +57,13 @@ class GradCAMExperiment(BaseExperiment):
     def run(self):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
-        model, filelist = load_working_model(run_params, model_path="zoo/5000-90acc", reload_classes_from_dataset=False)
+        model_save_path = run_params.get(R.MODEL_SAVE_PATH)
+        model, filelist = load_working_model(run_params, model_path=model_save_path, reload_classes_from_dataset=False)
         model.save_gradient = True
         model.cpu()
         # test_filepath = "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_speaker_youtube_resampled.mp3"
-        test_filepath = "/home/andrius/git/bakis/data/test_data/New Order - Blue Monday.mp3"
-        spectrogram_raw = self.load_spectrogram(test_filepath, 130*41000, 2**17)
+        test_filepath = "/media/andrius/FastBoi/bakis_data/final22k/train/Adele - Hello.mp3"
+        spectrogram_raw = self.load_spectrogram(test_filepath, 140*22050, 2**17)
         spectrogram = spectrogram_raw.clone()
         print(spectrogram.shape)
 

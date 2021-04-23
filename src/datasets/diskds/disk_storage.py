@@ -156,14 +156,15 @@ class DiskStorage:
     def get_audio_file_paths(self):
         self._file_count = 0
         self._file_array = []
+        log.info(f"Walking directory to discover audiofiles: {self._root_dir}")
         for root, directories, files in os.walk(self._root_dir):
             directories.sort()
             files.sort()
             for file in files:
-                # print(file)
                 filepath = os.path.normpath(os.path.join(root, file))
                 _, ext = os.path.splitext(filepath)
                 if ext in self._formats:
+                    # log.info(filepath)
                     self._file_array.append(filepath)
                     yield filepath
                     self._file_count += 1

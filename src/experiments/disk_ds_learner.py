@@ -49,8 +49,7 @@ class DiskDsLearner(BaseExperiment):
         runner = AudioRunner(model, run_params, tensorboard_prefix='diskds')
         log.info("Runner initialized, starting train")
         runner.train()
-        torch.save(model, "lin.pth")
-        # ce_clustering_loader.save(model.classification[-1], cec_save_path, file_list)
+        # torch.save(model, "lin.pth")
         save_working_model(model, run_params, model_save_path)
         
 

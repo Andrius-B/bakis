@@ -7,32 +7,43 @@ from src.tools.random_copy import RandomCopy
 
 experiment_registry = ExperimentRegistry()
 
+
 def generate_experiments_help_message():
     experiments = ', '.join(experiment_registry.get_experiment_names())
-    return f"Runnable experiments: {experiments}\n"
+    return f"Runnable experiments: {experiments}"
+
 
 def configure_experiment_parser(parser):
-    parser.add_argument("experiment", type=str,
-                    help="Which experiment to run. " + generate_experiments_help_message())
-    def run(args):
-        experiment_registry.run_experiment(args.experiment, None)
-    parser.set_defaults(func=run)
+    experiment_parser = parser.add_subparsers()
+
+    for experiment in experiment_registry.get_experiment_names():
+        experiment_help = experiment_registry.get_experiment_help(experiment)
+        specific_parser = experiment_parser.add_parser(experiment, description=experiment_help)
+
+        def run(args):
+            experiment_registry.run_experiment(experiment, None)
+        specific_parser.set_defaults(func=run)
+
 
 def configure_resampler_parser(parser):
     resampler = Resampler()
     resampler.configure_argument_parser(parser)
+
     def run(args):
         resampler.run(args)
     parser.set_defaults(func=run)
 
+
 def configure_copier_parser(parser):
     copier = RandomCopy()
     copier.configure_argument_parser(parser)
+
     def run(args):
         copier.run(args)
     parser.set_defaults(func=run)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     Config()
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help='type of run')
@@ -54,7 +65,3 @@ if __name__=="__main__":
         args.func(args)
     else:
         parser.print_usage()
-    
-    
-
-

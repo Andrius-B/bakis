@@ -1,12 +1,12 @@
 import logging
 import os
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.datasets.diskds.disk_storage import DiskStorage
 from src.datasets.diskds.sqlite_storage import SQLiteStorage, SQLiteStorageObject
 from src.config import Config
-from src.util.mutagen_utils import read_mp3_metadata,read_flac_metadata
+from src.util.mutagen_utils import read_mp3_metadata, read_flac_metadata
 from src.runners.run_parameter_keys import R
 from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
 import librosa
@@ -14,6 +14,7 @@ import torchaudio
 from torch import Tensor
 from matplotlib import pyplot as plt
 import os
+
 
 class SpectrogramAnalysisExperiment(BaseExperiment):
 
@@ -27,10 +28,10 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
 
     def draw_spectrogram(self, ax, spectrogram, sample_rate, title):
         ax.set_title(title)
-        numpy_spec = spectrogram.numpy()[0][0] # unpack from the batch version
+        numpy_spec = spectrogram.numpy()[0][0]  # unpack from the batch version
         print(f"Spectrogram shape: {numpy_spec.shape}")
         librosa.display.specshow(numpy_spec, sr=sample_rate, hop_length=1024,
-                             x_axis='time', y_axis='mel', ax=ax)
+                                 x_axis='time', y_axis='mel', ax=ax)
         ax.text(0, 0, self.get_statistics_of_spectrogram(numpy_spec))
 
     def run(self):
@@ -44,22 +45,27 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         if not os.path.exists(filepath):
             log.error(f"Requested test file not found at: {filepath}")
             raise RuntimeError(f"File not found: {filepath}")
-        
+
         samples, sample_rate = torchaudio.backend.sox_backend.load(
             filepath,
             offset=config.sample_rate*49,
             num_frames=int(run_params.get(R.DISKDS_WINDOW_LENGTH)),
             normalization=False,
         )
-        samples = samples[0] # only take one channel.
-        samples = samples.view(1,1,-1)
+        samples = samples[0]  # only take one channel.
+        samples = samples.view(1, 1, -1)
         log.info(f"Loaded samples reshaped to: {samples.shape}")
         raw_samples = samples[0][0].cpu().numpy()
         non_augmented_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=False).cpu()
         normalized_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True).cpu()
+<<<<<<< HEAD
         random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=False, frf_mimic_prob=0, random_poly_cut=False, inverse_poly_cut=False, add_noise=0, random_highpass=True, random_bandcut=True).cpu()
         # random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=False, frf_mimic_prob=0, random_poly_cut=True, inverse_poly_cut=True, add_noise=0).cpu()
         # random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=True, frf_mimic_prob=1, random_poly_cut=False, inverse_poly_cut=False, add_noise=0).cpu()
+=======
+        random_spectrogram = spectrogram_generator.generate_spectrogram(
+            samples, normalize_mag=True, frf_mimic=True, frf_mimic_prob=1, random_poly_cut=False, inverse_poly_cut=False, add_noise=0.01).cpu()
+>>>>>>> Change experiment documentation setup
 
         ax1 = fig.add_subplot(subplots[0], subplots[1], 1)
         ax1.set_title("File Waveform")
@@ -76,5 +82,6 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         fig.tight_layout()
         plt.show()
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """An experiment that loads a file from disk and displays variuos different variations of spectrograms"""

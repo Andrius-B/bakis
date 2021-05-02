@@ -1,4 +1,4 @@
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.datasets.dataset_provider import DatasetProvider
@@ -9,6 +9,7 @@ import librosa.display
 import matplotlib.cm
 import torchaudio
 import torch
+
 
 class WindowToSpectro(BaseExperiment):
 
@@ -34,7 +35,7 @@ class WindowToSpectro(BaseExperiment):
         self.config = Config()
         spectrogram_t = torchaudio.transforms.Spectrogram(
             n_fft=2048, win_length=2048, hop_length=1024, power=None
-        ).to(self.config.run_device) # generates a complex spectrogram
+        ).to(self.config.run_device)  # generates a complex spectrogram
         time_stretch_t = torchaudio.transforms.TimeStretch(hop_length=1024, n_freq=1025).to(self.config.run_device)
         freq_mask_t = torchaudio.transforms.FrequencyMasking(32)
         mel_t = torchaudio.transforms.MelScale(n_mels=64, sample_rate=self.config.sample_rate).to(self.config.run_device)
@@ -43,10 +44,10 @@ class WindowToSpectro(BaseExperiment):
 
         test_item = None
         for item in valid_l:
-             print(f"Item from validation: {str([item['filepath'], item['window_start'], item['window_end'], item['onehot']])}")
-             test_item = item
-             break
-        
+            print(f"Item from validation: {str([item['filepath'], item['window_start'], item['window_end'], item['onehot']])}")
+            test_item = item
+            break
+
         samples = test_item["samples"].to(self.config.run_device)
         spectrogram = spectrogram_t(samples)
         spectrogram = spectrogram.narrow(3, 0, 64)
@@ -65,13 +66,12 @@ class WindowToSpectro(BaseExperiment):
         ax1.set_title(f"File Waveform ({test_item['filepath']})")
         librosa.display.waveplot(samples, sr=self.config.sample_rate, ax=ax1)
 
-
         ax2 = fig.add_subplot(2, 2, 3)
         ax2.set_title("Pytorch generated spectrogram")
         spectro = spectrogram.numpy()
         print(f"Spectrogram shape: {spectro.shape} --\n{spectro}")
         librosa.display.specshow(spectro, sr=self.config.sample_rate, hop_length=1024,
-                             x_axis='time', y_axis='mel', ax=ax2)
+                                 x_axis='time', y_axis='mel', ax=ax2)
 
         # full_samples, sample_rate = torchaudio.backend.sox_io_backend.load(item['filepath'][0])
         # print(f"full samples: {full_samples.shape}, sr:{sample_rate}")
@@ -95,7 +95,7 @@ class WindowToSpectro(BaseExperiment):
         # print(f"window start: {str(splice_start)}, end: {str(splice_end)}, len: {splice_len}")
         # print(f"full samples shape: {full_samples.shape} -- {full_samples}")
         # spliced_samples = full_samples[splice_start:splice_end]
-        
+
         # # print(f"spliced samples size: {spliced_samples.shape} -- {spliced_samples}")
         # ax3 = fig.add_subplot(2, 2, 2)
         # ax3.set_title("Spliced File Waveform")
@@ -107,7 +107,6 @@ class WindowToSpectro(BaseExperiment):
         # spliced_spectrogram = spectrogram[:,spectro_splice_start:spectro_splice_end]
         # print(f"Spliced spectro shape: {spliced_spectrogram.shape} -- {spliced_spectrogram}")
 
-
         # ax4 = fig.add_subplot(2, 2, 4)
         # ax4.set_title("Pytorch generated spectrogram (spliced)")
         # spectro = spliced_spectrogram.numpy()
@@ -116,9 +115,8 @@ class WindowToSpectro(BaseExperiment):
         #                      x_axis='time', y_axis='mel', ax=ax4)
 
         plt.show()
-             
-        
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """Run an experiment trying to pre-compute a spectrogram and select a window from it instead
         of reading a windows from data file and """

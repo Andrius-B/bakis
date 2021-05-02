@@ -3,11 +3,12 @@ from abc import ABC, abstractmethod
 
 from src.runners.run_parameters import RunParameters
 
+
 class BaseExperiment(ABC):
 
     def __init__(self, parameter_overrides: Dict[str, str]):
         self.parameter_overrides = parameter_overrides
-    
+
     def get_run_params(self):
         # the order here is important:
         #   * we take the default run parameters
@@ -26,7 +27,6 @@ class BaseExperiment(ABC):
     def run(self):
         pass
 
-    @abstractmethod
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return "BaseExperiment class should never be instantiated!"
-    

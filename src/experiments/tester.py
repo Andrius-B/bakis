@@ -1,20 +1,20 @@
 import logging
 import os
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.datasets.diskds.disk_storage import DiskStorage
 from src.datasets.diskds.sqlite_storage import SQLiteStorage, SQLiteStorageObject
 from src.config import Config
-from src.util.mutagen_utils import read_mp3_metadata,read_flac_metadata
+from src.util.mutagen_utils import read_mp3_metadata, read_flac_metadata
 from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
 from multiprocessing import Pool
 import torch
 import torchaudio
-    
+
 
 class Tester(BaseExperiment):
-    
+
     def process_file(fp):
         samples, sample_rate = torchaudio.backend.sox_io_backend.load(filepath, normalize=False)
         samples = samples.to(config.run_device)
@@ -30,9 +30,10 @@ class Tester(BaseExperiment):
             MAX = max_v
         mean = SUM/N
         return (MIN, MAX, N, SUM)
-    
+
     def get_experiment_default_parameters(self):
         return {}
+
     def run(self):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
@@ -49,13 +50,10 @@ class Tester(BaseExperiment):
         with Pool(5) as p:
             result = p.map(self.process_file, paths)
             print(result)
-        
 
         print(f"Mean={SUM}/{N}={mean}")
         print(f"Min={MIN}; Max={MAX}")
 
-
-        
-
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """This experiment load a dataset from disk and iterates though it once"""

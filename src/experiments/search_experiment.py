@@ -1,7 +1,7 @@
 import logging
 import os
 import torch
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.models.res_net_akamaster_audio import *
 from src.models.working_model_loader import *
@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader
 import json
 
 log = logging.getLogger(__name__)
+
+
 class SearchExperiment(BaseExperiment):
 
     def get_experiment_default_parameters(self):
@@ -89,7 +91,7 @@ class SearchExperiment(BaseExperiment):
             track_name = os.path.basename(file_list[track_idx])
             track_name, _ = os.path.splitext(track_name)
             log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_size={cluster_sizes[track_idx].item()}")
-        
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """Tries to teach a simple cec resnet for classes read from disk"""

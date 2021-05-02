@@ -7,11 +7,12 @@ import torch
 
 log = logging.getLogger(__name__)
 
+
 class RestoreTempSaveToZooExperiment(BaseExperiment):
 
     def get_experiment_default_parameters(self):
         return {
-            #IMPORTANT: configure the correct dataset for the model here (as file data is not in the temporary pth file)
+            # IMPORTANT: configure the correct dataset for the model here (as file data is not in the temporary pth file)
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/top10000_meta_22k)',
             R.DISKDS_NUM_FILES: '5000',
             R.CLUSTERING_MODEL: 'mass',
@@ -21,12 +22,12 @@ class RestoreTempSaveToZooExperiment(BaseExperiment):
         run_params = super().get_run_params()
         config = Config()
         model = resnet56(
-            ceclustering = True,
-            num_classes = int(run_params.get(R.DISKDS_NUM_FILES))
+            ceclustering=True,
+            num_classes=int(run_params.get(R.DISKDS_NUM_FILES))
         )
         model.load_state_dict(torch.load("net_c.pth"))
         save_working_model(model, run_params, 'zoo/1000v1')
 
-
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """A quick experiment designed to load a temporary save file that the runner outputs and save it as a model in the zoo"""

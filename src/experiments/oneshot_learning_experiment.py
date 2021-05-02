@@ -1,8 +1,9 @@
 from src.runners.abstract_runner import AbstractRunner
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.models.res_net_akamaster import *
+
 
 class CecOneshotTrainingExperiment(BaseExperiment):
 
@@ -24,6 +25,7 @@ class CecOneshotTrainingExperiment(BaseExperiment):
             runner = AbstractRunner(net, run_params, tensorboard_prefix='cec-oneshot')
             runner.train()
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """This experiment train for multiple epochs on 99 classes of cifar100 and then introduces the final 
         class with only showing the images once"""

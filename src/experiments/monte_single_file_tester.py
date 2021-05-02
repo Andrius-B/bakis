@@ -3,7 +3,7 @@ import os
 import torch
 from torchsummary import summary
 from src.runners.audio_runner import AudioRunner
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.datasets.diskds.disk_storage import RandomSubsampleWindowGenerationStrategy
 from src.datasets.diskds.disk_dataset import DiskDataset
@@ -28,6 +28,7 @@ cmap = matplotlib.cm.get_cmap('plasma')
 
 log = logging.getLogger(__name__)
 
+
 class MonteSingleFileTester(BaseExperiment):
 
     def get_experiment_default_parameters(self):
@@ -51,7 +52,7 @@ class MonteSingleFileTester(BaseExperiment):
         scale_hops = 10
         spectrogram_t_viz = torchaudio.transforms.Spectrogram(
             n_fft=2048*scale_hops, win_length=2048*scale_hops, hop_length=1024*scale_hops, power=None
-        ).to(config.run_device) # generates a complex spectrogram
+        ).to(config.run_device)  # generates a complex spectrogram
         mel_t_viz = torchaudio.transforms.MelScale(n_mels=256, sample_rate=config.sample_rate).to(config.run_device)
         norm_t = torchaudio.transforms.ComplexNorm(power=2).to(config.run_device)
         ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(config.run_device)
@@ -60,14 +61,14 @@ class MonteSingleFileTester(BaseExperiment):
         full_samples = full_samples.to("cpu").view((1, -1))
         full_samples, sample_rate = FileLoadingSoxEffects(sample_rate, config.sample_rate, False).forward(full_samples)
         full_samples = full_samples.to(config.run_device)
-        spectrogram = spectrogram_t_viz(full_samples.view(1,-1))
+        spectrogram = spectrogram_t_viz(full_samples.view(1, -1))
         spectrogram = norm_t(spectrogram)
         spectrogram = mel_t_viz(spectrogram)
         spectrogram = ampToDb_t(spectrogram)
         spectrogram = spectrogram.cpu().detach().numpy()[0]
         print(f"Spectrogram shape: {spectrogram.shape}")
         librosa.display.specshow(spectrogram, sr=config.sample_rate, hop_length=1024*scale_hops,
-                            x_axis='time', y_axis='mel', ax=ax, cmap=cmap)
+                                 x_axis='time', y_axis='mel', ax=ax, cmap=cmap)
 
     def run(self):
         log = logging.getLogger(__name__)
@@ -92,7 +93,7 @@ class MonteSingleFileTester(BaseExperiment):
             sox_effects=FileLoadingSoxEffects(initial_sample_rate=file_info.sample_rate, final_sample_rate=config.sample_rate, random_pre_resampling=False)
         )
         files = base_dataset.get_file_list()
-        loader = DataLoader(base_dataset, shuffle=False, batch_size=64, num_workers=6) 
+        loader = DataLoader(base_dataset, shuffle=False, batch_size=64, num_workers=6)
         num_batches = len(loader)
         print(f"Files: {len(files)}")
         file_duration = int(file_info.num_frames/file_info.sample_rate)
@@ -100,8 +101,8 @@ class MonteSingleFileTester(BaseExperiment):
         predicted_total = 0
         predicted_correctly = 0
         predicted_correctly_topk = 0
-        top1_buckets = [[0,0] for _ in range(file_duration)]
-        topk_buckets = [[0,0] for _ in range(file_duration)]
+        top1_buckets = [[0, 0] for _ in range(file_duration)]
+        topk_buckets = [[0, 0] for _ in range(file_duration)]
         num_epochs = int(run_params.get(R.EPOCHS))
         for i in range(num_epochs):
             pbar = tqdm(enumerate(loader), total=len(loader), leave=True)
@@ -132,7 +133,8 @@ class MonteSingleFileTester(BaseExperiment):
                 correct_predictions_in_batch = correct.sum().item()
                 predicted_total += len(target)
                 predicted_correctly += correct_predictions_in_batch
-                pbar.set_description(f"running validation accuracy: TOP-1:{predicted_correctly/predicted_total:.3%}, TOP-{topn}: {predicted_correctly_topk/predicted_total:.3%}")
+                pbar.set_description(
+                    f"running validation accuracy: TOP-1:{predicted_correctly/predicted_total:.3%}, TOP-{topn}: {predicted_correctly_topk/predicted_total:.3%}")
                 for bi in range(len(target)):
                     # iterate over batch and add to the counters:
                     bi_correct = correct[bi].item()
@@ -161,5 +163,6 @@ class MonteSingleFileTester(BaseExperiment):
         fig.suptitle(f'Accuracy for \"{display_name}\"', fontsize=16)
         plt.show()
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """Tries to teach a simple cec resnet for classes read from disk"""

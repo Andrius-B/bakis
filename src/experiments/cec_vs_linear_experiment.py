@@ -1,9 +1,10 @@
 from src.runners.abstract_runner import AbstractRunner
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.models.res_net_akamaster import *
 from torchsummary import summary
+
 
 class CECvsLinearExperiment(BaseExperiment):
 
@@ -36,7 +37,8 @@ class CECvsLinearExperiment(BaseExperiment):
         runner = AbstractRunner(net, run_params, tensorboard_prefix='cifar_lin')
         runner.train()
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """This experiment runs a comparison: CEClustering vs Linear
         on resnet20 with only the classification part of the model altered.
         By default using 10 trials of 30 epochs for each model"""

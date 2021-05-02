@@ -1,10 +1,11 @@
 import logging
 from src.runners.sqlite_audio_runner import SQliteAudioRunner
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.models.mel_2048_conv2d import net
 from src.runners.run_parameter_keys import R
 from src.datasets.dataset_provider import DatasetProvider
+
 
 class SQLiteDsLearner(BaseExperiment):
 
@@ -23,7 +24,7 @@ class SQLiteDsLearner(BaseExperiment):
         runner = SQliteAudioRunner(net, run_params, tensorboard_prefix='diskds')
         log.info("Runner initialized, starting train")
         runner.train()
-        
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """Tries to teach a simple cec resnet for classes read from disk"""

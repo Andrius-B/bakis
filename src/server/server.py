@@ -66,13 +66,16 @@ model.train(False)
 model.to(searchify_config.run_device)
 log.info(f"Loading complete, server ready, loaded model: {model.classification}")
 
+
 def allowed_file(filename):
     _, file_extension = os.path.splitext(filename)
     return file_extension[1:] in ALLOWED_EXTENSIONS
 
+
 def read_file_metadata(track_idx: int):
     filepath = file_list[track_idx]
     return read_mp3_metadata(filepath)
+
 
 @app.route('/cover', methods=['GET'])
 def get_cover():
@@ -95,7 +98,7 @@ def get_cover():
     picture_bytes = picture_apic.data
     picture_file = BytesIO(picture_bytes)
     return send_file(picture_file, mimetype=picture_apic.mime)
-    
+
 
 @app.route('/searchify', methods=['GET', 'POST'])
 def upload_file():
@@ -197,7 +200,7 @@ def upload_file():
                     elif model_type == "mass":
                         track_cluster_size = float(cluster_mass[track_idx])
                         output_distances = torch.div(output_distances, mass_max_dist)
-                        cluster_forces = (g_constant * track_cluster_size  * average_cluster_mass)/ torch.square(output_distances)
+                        cluster_forces = (g_constant * track_cluster_size * average_cluster_mass) / torch.square(output_distances)
                         mean_force_for_track = torch.mean(cluster_forces)
                         # log.info(f"Mean stats for samples to track {track_idx}:\tr={torch.mean(output_distances)} f={mean_force_for_track.item()} r_min={torch.min(output_distances).item()} f_min={torch.min(cluster_forces).item()} r_max={torch.max(output_distances).item()} f_max={torch.max(cluster_forces).item()}")
                         sample_distances_to_clusters[track_idx] = -mean_force_for_track.item()
@@ -217,16 +220,17 @@ def upload_file():
                         graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_mass[track_idx].item()), None))
                         log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_mass={cluster_mass[track_idx].item()}")
                     graph_links.append(GraphLink(-1, track_idx, float(sorted_sample_avg_distances_to_clusters[track_idx])))
-                
+
                 topn_links = []
                 for source_idx in sorted_sample_avg_distances_to_clusters:
                     for target_idx in sorted_sample_avg_distances_to_clusters:
                         if source_idx == target_idx:
                             continue
                         indicies = [source_idx, target_idx]
+
                         def f(l: GraphLink):
                             return l.source_track_index in indicies and l.target_track_index in indicies
-                        if len(list(filter(f, graph_links))) == 0: # if there is no link yet between the two nodes
+                        if len(list(filter(f, graph_links))) == 0:  # if there is no link yet between the two nodes
                             if model_type == "cec":
                                 source_pos = cluster_positions[source_idx]
                                 target_pos = cluster_positions[target_idx]
@@ -258,15 +262,17 @@ def upload_file():
                     # fully connected graphs are not easy to visualize, so here we make it so
                     # that a node has at max N connections:
                     N = query_graph_connectivity
+
                     def f(l: GraphLink):
                         return l.distance
                     topn_links = sorted(topn_links, key=f)
                     for topn_link in topn_links:
                         link_indicies = [topn_link.source_track_index, topn_link.target_track_index]
+
                         def f(l: GraphLink):
                             return l.source_track_index in link_indicies or l.target_track_index in link_indicies
                         current_node_links = list(filter(f, graph_links))
-                        if len(current_node_links) < N*2: # twice, because we are counting links for both target and source
+                        if len(current_node_links) < N*2:  # twice, because we are counting links for both target and source
                             graph_links.append(topn_link)
                 if model_type == "mass":
                     link_distances = []
@@ -297,3 +303,7 @@ def upload_file():
       <input type=submit value=Upload>
     </form>
     '''
+
+
+if __name__ == "__main__":
+    app.run()

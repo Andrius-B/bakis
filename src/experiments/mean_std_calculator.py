@@ -1,6 +1,6 @@
 import logging
 import os
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.datasets.diskds.disk_storage import DiskStorage, UniformReadWindowGenerationStrategy
@@ -8,7 +8,7 @@ from src.datasets.diskds.disk_dataset import DiskDataset
 from torch.utils.data import DataLoader
 from src.datasets.diskds.sqlite_storage import SQLiteStorage, SQLiteStorageObject
 from src.config import Config
-from src.util.mutagen_utils import read_mp3_metadata,read_flac_metadata
+from src.util.mutagen_utils import read_mp3_metadata, read_flac_metadata
 from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
 from multiprocessing import Pool
 from random import shuffle
@@ -16,10 +16,13 @@ from tqdm import tqdm
 import math
 import torch
 import torchaudio
+
+
 class MeanStdCalculator(BaseExperiment):
 
     def get_experiment_default_parameters(self):
         return {}
+
     def process_file_step1(self, filepath):
         try:
             config = Config()
@@ -80,13 +83,13 @@ class MeanStdCalculator(BaseExperiment):
                 if MIN > min_v:
                     MIN = min_v
                 if MAX < max_v:
-                    MAX = max_v 
+                    MAX = max_v
                 mean = SUM/N
                 pbar.set_description_str(f"min={MIN:3.2f} max={MAX:3.4f} mean={mean:3.4f}")
-            
+
             print(f"Mean={SUM}/{N}={mean}")
             print(f"Min={MIN}; Max={MAX}")
-            
+
             mean = SUM/N
             self.mean = mean
             pbar = tqdm(p.imap_unordered(self.process_file_step2, paths), total=len(paths))
@@ -98,12 +101,12 @@ class MeanStdCalculator(BaseExperiment):
                     continue
                 var = VARIATION_SUM/VARIATION_N
                 pbar.set_description_str(f"var={var:3.4f} std={math.sqrt(var):3.4f}")
-            
+
         print(f"Mean={SUM}/{N}={mean}")
         print(f"Min={MIN}; Max={MAX}")
         VAR = VARIATION_SUM/VARIATION_N
         print(f"variation={VARIATION_SUM}/{VARIATION_N}={VAR}; stdev={math.sqrt(VAR)}")
-            
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """Calculates the spectrogram mean and standard deviation across a couple of datasets."""

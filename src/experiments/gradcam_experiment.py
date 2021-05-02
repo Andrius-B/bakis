@@ -1,6 +1,6 @@
 import logging
 import os
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.models.res_net_akamaster_audio import *
@@ -16,13 +16,14 @@ import cv2
 
 log = logging.getLogger(__name__)
 
+
 class GradCAMExperiment(BaseExperiment):
     # references:
     # https://arxiv.org/pdf/1610.02391v1.pdf
     # https://medium.com/@stepanulyanin/implementing-grad-cam-in-pytorch-ea0937c31e82
 
     def get_experiment_default_parameters(self):
-         return {
+        return {
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/final22k/train)',
             R.DISKDS_NUM_FILES: '9500',
             R.BATCH_SIZE_TRAIN: '75',
@@ -34,7 +35,7 @@ class GradCAMExperiment(BaseExperiment):
         if not os.path.exists(filepath):
             log.error(f"Requested test file not found at: {filepath}")
             raise RuntimeError(f"File not found: {filepath}")
-        
+
         samples, sample_rate = torchaudio.backend.sox_backend.load(
             filepath,
             offset=offset_frames,
@@ -43,10 +44,10 @@ class GradCAMExperiment(BaseExperiment):
         )
         # sample_path = os.path.join(os.path.dirname(filepath), "samples", f"sample_{os.path.basename(filepath)}")
         # torchaudio.backend.sox_backend.save(sample_path, samples, 41000)
-        samples = samples[0].view((1, -1)) # only take one channel.
+        samples = samples[0].view((1, -1))  # only take one channel.
         log.info(f"loaded samples shape: {samples.shape}")
         samples, sample_rate = FileLoadingSoxEffects(sample_rate, Config().sample_rate, False).forward(samples)
-        samples = samples.view(1,1,-1)
+        samples = samples.view(1, 1, -1)
         log.info(f"Loaded samples reshaped to: {samples.shape}")
         raw_samples = samples[0][0].cpu().numpy()
         config = Config()
@@ -88,7 +89,7 @@ class GradCAMExperiment(BaseExperiment):
         one_hot = one_hot * -10
         one_hot[0][target_class] = 1
         one_hot = torch.from_numpy(one_hot).requires_grad_(True)
-        
+
         one_hot = torch.sum(one_hot * predictions)
 
         # propagate the gradients backward via auto differentiation of pytorch
@@ -96,7 +97,7 @@ class GradCAMExperiment(BaseExperiment):
         one_hot.backward(retain_graph=True)
 
         resnet_gradients = model.get_resnet_gradient()
-        mean_gradients_per_pane = torch.mean(resnet_gradients, dim=(0, 2, 3)) 
+        mean_gradients_per_pane = torch.mean(resnet_gradients, dim=(0, 2, 3))
         resnet_activation = model.get_resnet_activations(spectrogram).detach()
 
         # print(f"mean_gradients: {mean_gradients_per_pane.shape} -- \n {mean_gradients_per_pane}")
@@ -104,7 +105,7 @@ class GradCAMExperiment(BaseExperiment):
 
         for i, mean_gradient in enumerate(mean_gradients_per_pane):
             resnet_activation[:, i, :, :] *= mean_gradient
-        
+
         heatmap = torch.mean(resnet_activation, dim=1)[0]
         # print(f"generated heatmap: {heatmap.shape} -- \n{heatmap}")
 
@@ -132,17 +133,15 @@ class GradCAMExperiment(BaseExperiment):
         ax.imshow(np.flip(spectrogram, axis=-2), cmap='gray')
         ax.imshow(np.flip(heatmap, axis=-2), cmap='plasma', alpha=0.4)
 
-
         ax = fig.add_subplot(2, 2, 3)
         ax.set_title(os.path.basename(test_filepath) + (" (Masked)"))
         spectrogram = spectrogram_raw.clone()
         mask_value = (spectrogram.max() - spectrogram.min()) / 2
-        mask_size = (8,8)
+        mask_size = (8, 8)
         masked_spectrogram = spectrogram.clone()
         masked_spectrogram[:, :, 10:(10+mask_size[0]), 20:(20+mask_size[1])] = mask_value
         masked_spectrogram = masked_spectrogram.numpy()
         ax.imshow(np.flip(masked_spectrogram[0][0], axis=-2), cmap='plasma')
-
 
         ax = fig.add_subplot(2, 2, 4)
         ax.set_title(os.path.basename(test_filepath) + " (Occluded class probabilities)")
@@ -157,7 +156,7 @@ class GradCAMExperiment(BaseExperiment):
         plt.tight_layout()
         plt.show()
 
-    def generate_occlusion_class_probability_heatmap(self, model: ResNet, spectrogram: torch.Tensor, target_class: int, mask_size = (16,16), stride=4) -> torch.Tensor:
+    def generate_occlusion_class_probability_heatmap(self, model: ResNet, spectrogram: torch.Tensor, target_class: int, mask_size=(16, 16), stride=4) -> torch.Tensor:
         """
         Implementation of class-probability heatmap based on https://arxiv.org/pdf/1311.2901.pdf
         """
@@ -186,8 +185,6 @@ class GradCAMExperiment(BaseExperiment):
         # output_heatmap = output_heatmap
         return output_heatmap
 
-
-            
-
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """Tries to visualize how the network chose a specific class using gradcam """

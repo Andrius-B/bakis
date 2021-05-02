@@ -108,7 +108,6 @@ class DiskDatasetTests(TestCase):
         onehot3 = dataset.generate_onehot(SpecificAudioFileWindow(dataset._disk_storage, 2, 0, 1))
         self.assertEqual(onehot3["onehot"].item(), 2)
 
-
     # def test_diskdataset_single_file(self):
 
     #     dataset = DiskDataset("test/test_data/1 - Chino - Kolaps.flac", features=["onehot"], storage_type=SingleFileDiskStorage)
@@ -119,7 +118,6 @@ class DiskDatasetTests(TestCase):
     #     for i in range(len(dataset)):
     #         item = dataset[i]
     #         self.assertEqual(item["onehot"].item(), 1)
-
 
     def test_diskdataset_single_file_read_data_random_windows(self):
         generation_strategy = UniformReadWindowGenerationStrategy(window_len=2**16, window_hop=2**16)
@@ -132,4 +130,3 @@ class DiskDatasetTests(TestCase):
         for item in dataset[:5]:
             self.assertGreater(item["samples"].shape[1], 2**16)
             self.assertEqual(44100, item["sample_rate"])
-

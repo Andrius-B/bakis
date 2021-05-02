@@ -3,11 +3,12 @@ import os
 import torch
 from torchsummary import summary
 from src.runners.audio_runner import AudioRunner
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.models.res_net_akamaster_audio import *
 from src.models.working_model_loader import *
 from src.runners.run_parameter_keys import R
+
 
 class DiskDsLearner(BaseExperiment):
 
@@ -51,7 +52,7 @@ class DiskDsLearner(BaseExperiment):
         runner.train()
         # torch.save(model, "lin.pth")
         save_working_model(model, run_params, model_save_path)
-        
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """Tries to teach a simple cec resnet for classes read from disk"""

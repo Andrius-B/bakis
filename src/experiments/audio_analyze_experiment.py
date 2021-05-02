@@ -1,5 +1,5 @@
 from src.runners.abstract_runner import AbstractRunner
-from src.experiments.base_experiment import BaseExperiment 
+from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.run_parameter_keys import R
 from src.models.ceclustering import CEClustering
@@ -20,6 +20,7 @@ import logging
 
 cmap = matplotlib.cm.get_cmap('plasma')
 log = logging.getLogger(__name__)
+
 
 class AudioAnalyzeExperiment(BaseExperiment):
 
@@ -43,8 +44,8 @@ class AudioAnalyzeExperiment(BaseExperiment):
         print(f"Max centroid distance from (0): {max_len}")
         plt.show()
         # print(f"Centroid s: {cluster_size} of {filepath} at: {centroid}")
-    
-    def run_centroids_tsne(self, tsne_data, text_resolver = None, color_resolver = None, playlist_resolver = None):
+
+    def run_centroids_tsne(self, tsne_data, text_resolver=None, color_resolver=None, playlist_resolver=None):
         tsne_fn = TSNE(n_components=2, verbose=1, perplexity=50, n_iter=10000, learning_rate=200)
         tsne_results = tsne_fn.fit_transform(tsne_data)
         centroids = tsne_results
@@ -63,7 +64,7 @@ class AudioAnalyzeExperiment(BaseExperiment):
                 classText = str(centroid_idx)
             playlist = "None"
             if playlist_resolver is not None:
-                playlist =  playlist_resolver(centroid_idx)
+                playlist = playlist_resolver(centroid_idx)
             centroids_list.append({
                 'xpos': centroid_pos[0],
                 'ypos': centroid_pos[1],
@@ -110,7 +111,7 @@ class AudioAnalyzeExperiment(BaseExperiment):
 
     def load_spotify_playlists(self):
         f_names = {
-            "Dance Party":"test/playlists/danceparty.csv",
+            "Dance Party": "test/playlists/danceparty.csv",
             "Rap Caviar": "test/playlists/rapcaviar.csv",
             "Rock Classics": "test/playlists/rockclassics.csv",
             "Shoegaze": "test/playlists/shoegaze.csv",
@@ -134,6 +135,7 @@ class AudioAnalyzeExperiment(BaseExperiment):
         playlists = self.load_spotify_playlists()
         net, files = load_working_model(run_params, 'zoo/9500massv2', reload_classes_from_dataset=False)
         clustering_module = net.classification[-1].cpu()
+
         def playlist_resolver(idx):
             filename = files[idx]
             try:
@@ -174,8 +176,8 @@ class AudioAnalyzeExperiment(BaseExperiment):
         num_classes = int(run_params.get(R.DISKDS_NUM_FILES))
         tsne_data = clustering_module.centroids.detach().numpy()[:num_classes, :]
         self.run_centroids_tsne(tsne_data, text_resolver, color_resolver, playlist_resolver)
-        
 
-    def help_str(self):
+    @staticmethod
+    def help_str():
         return """This experiment is not designed for sustained use -- it's used for one off analysis, where it has some utility
          functions that help out in analyzing how an audio net is working or why it's behaving the way it is."""

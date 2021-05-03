@@ -25,6 +25,7 @@ flask = "*"
 jupyter = "*"
 opencv-python = "*"
 flask-cors = "*"
+gunicorn = "*"
 
 [dev-packages]
 pylint = "*"

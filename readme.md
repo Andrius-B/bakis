@@ -1,6 +1,8 @@
-Run server with: 
-
+Run development server with: 
 `FLASK_APP=src/server/server.py  FLASK_ENV=development python -m flask run`
+
+run gunicorn with:
+`gunicorn --bind unix:server.sock -m 007 src.server.wsgi:app`
 
 because of versioning issues, torch packages need to be manually installed in the venv with: 
 

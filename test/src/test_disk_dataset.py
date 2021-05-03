@@ -1,8 +1,8 @@
 from unittest import TestCase
 from torch.utils.data import DataLoader
-from src.datasets.disk_dataset.disk_dataset import DiskDataset, SpecificAudioFileWindow
-from data.disk_reader.disk_storage import RandomSubsampleWindowGenerationStrategy, UniformReadWindowGenerationStrategy
-from data.disk_reader.single_file_disk_storage import SingleFileDiskStorage
+from src.datasets.diskds.disk_dataset import DiskDataset, SpecificAudioFileWindow
+from src.datasets.diskds.disk_storage import RandomSubsampleWindowGenerationStrategy, UniformReadWindowGenerationStrategy
+from src.datasets.diskds.single_file_disk_storage import SingleFileDiskStorage
 from torch.utils.data import DataLoader
 import os
 import numpy as np
@@ -13,7 +13,8 @@ class DiskDatasetTests(TestCase):
     def test_diskdataset(self):
         dataset = DiskDataset("test/test_data")
         idxs = dataset.get_idx_list()
-        self.assertGreater(len(idxs), 100)
+        print(f"Loaded idx's: {idxs}")
+        self.assertGreater(len(dataset), 100)
 
     def test_diskdataset_read_data(self):
         dataset = DiskDataset("test/test_data", features=["data"])
@@ -22,15 +23,14 @@ class DiskDatasetTests(TestCase):
             self.assertEqual(44100, item["sample_rate"])
 
     def test_diskdataset_read_data_uniform_windows(self):
-        generation_strategy = UniformReadWindowGenerationStrategy(window_len=2**16, window_hop=2**17)
+        generation_strategy = UniformReadWindowGenerationStrategy(window_len=2**16, window_hop=2**17, overread=1)
         dataset = DiskDataset(
             "test/test_data",
             features=["data"],
             window_generation_strategy=generation_strategy,
-            overread=1
         )
         for item in dataset[:5]:
-            self.assertGreater(item["samples"].shape[1], 2**16)
+            self.assertGreater(item["samples"].shape[1], 2**16-1)
             self.assertEqual(44100, item["sample_rate"])
         loader = DataLoader(dataset, batch_size=16)
         for item in loader:
@@ -91,9 +91,9 @@ class DiskDatasetTests(TestCase):
         dataset = DiskDataset("test/test_data/04_Lord.mp3", formats=[".mp3"], features=["metadata"], storage_type=SingleFileDiskStorage)
         window = SpecificAudioFileWindow(dataset._disk_storage, 0, 0, 1)
         mp3_meta = dataset.read_item_metadata(window)
-        self.assertEqual(["Lord"], mp3_meta['title'])
-        self.assertEqual(["Tv.Out"], mp3_meta["artist"])
-        self.assertEqual(["Dusk till Dawn"], mp3_meta["album"])
+        self.assertEqual("Lord", mp3_meta['title'])
+        self.assertEqual("Tv.Out", mp3_meta["artist"])
+        self.assertEqual("Dusk till Dawn", mp3_meta["album"])
 
     def test_diskdataset_generate_onehot(self):
         dataset = DiskDataset("test/test_data", features=["onehot"])

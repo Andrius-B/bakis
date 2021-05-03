@@ -40,7 +40,7 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         fig = plt.figure(figsize=(6, 6))
         subplots = (2, 2)
         spectrogram_generator = SpectrogramGenerator(config)
-        filepath = "test/test_data/04_Lord.mp3"
+        filepath = "/media/andrius/FastBoi/bakis_data/final22k/train/Adele - Hello.mp3"
         if not os.path.exists(filepath):
             log.error(f"Requested test file not found at: {filepath}")
             raise RuntimeError(f"File not found: {filepath}")
@@ -57,7 +57,9 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         raw_samples = samples[0][0].cpu().numpy()
         non_augmented_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=False).cpu()
         normalized_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True).cpu()
-        random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=True, frf_mimic_prob=1, random_poly_cut=False, inverse_poly_cut=False, add_noise=0.01).cpu()
+        random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=False, frf_mimic_prob=0, random_poly_cut=False, inverse_poly_cut=False, add_noise=0, random_highpass=True, random_bandcut=True).cpu()
+        # random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=False, frf_mimic_prob=0, random_poly_cut=True, inverse_poly_cut=True, add_noise=0).cpu()
+        # random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=True, frf_mimic_prob=1, random_poly_cut=False, inverse_poly_cut=False, add_noise=0).cpu()
 
         ax1 = fig.add_subplot(subplots[0], subplots[1], 1)
         ax1.set_title("File Waveform")
@@ -70,7 +72,7 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         self.draw_spectrogram(ax3, normalized_spectrogram, sample_rate, "Normalized spectrogram")
 
         ax4 = fig.add_subplot(subplots[0], subplots[1], 4)
-        self.draw_spectrogram(ax4, random_spectrogram, sample_rate, "FRF mimic mask")
+        self.draw_spectrogram(ax4, random_spectrogram, sample_rate, "Naive frequency masking")
         fig.tight_layout()
         plt.show()
 

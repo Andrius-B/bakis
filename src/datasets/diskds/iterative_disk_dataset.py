@@ -42,6 +42,8 @@ class IterativeDiskDataset(IterableDataset):
         self._last_loaded_file = -1
         self._len_estimate = -1
 
+        self._config = config
+
         if(file_limit < n_preloaded_files):
             raise IndexError("Can not use fewer files than preloaded, please reduce the preloaded file count")
 

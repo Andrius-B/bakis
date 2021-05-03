@@ -63,7 +63,7 @@ class GradCAMExperiment(BaseExperiment):
         model.cpu()
         # test_filepath = "/home/andrius/git/bakis/data/test_data/blue_monday_desktop_mic_speaker_youtube_resampled.mp3"
         test_filepath = "/media/andrius/FastBoi/bakis_data/final22k/train/Adele - Hello.mp3"
-        spectrogram_raw = self.load_spectrogram(test_filepath, 140*22050, 2**17)
+        spectrogram_raw = self.load_spectrogram(test_filepath, 40*22050, 2**17)
         spectrogram = spectrogram_raw.clone()
         print(spectrogram.shape)
 
@@ -181,9 +181,9 @@ class GradCAMExperiment(BaseExperiment):
                     conv_x += 1
                 conv_x = 0
                 conv_y += 1
-        output_heatmap += torch.min(output_heatmap)
-        output_heatmap /= torch.max(output_heatmap)
-        output_heatmap = 1 - output_heatmap
+        # output_heatmap += torch.min(output_heatmap)
+        # output_heatmap /= torch.max(output_heatmap)
+        # output_heatmap = output_heatmap
         return output_heatmap
 
 

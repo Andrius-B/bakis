@@ -3,6 +3,18 @@ Run development server with:
 
 run gunicorn with:
 `gunicorn --bind unix:server.sock -m 007 src.server.wsgi:app`
+with the following ngnix configuration:
+```
+server {
+    listen 80;
+    server_name chrome://net-internals/#dnssearchify.com www.searchify.com;
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/home/andrius/git/bakis/server.sock;
+    }
+}
+```
 
 because of versioning issues, torch packages need to be manually installed in the venv with: 
 

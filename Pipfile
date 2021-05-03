@@ -24,6 +24,7 @@ plotly = "*"
 flask = "*"
 jupyter = "*"
 opencv-python = "*"
+flask-cors = "*"
 
 [dev-packages]
 pylint = "*"

@@ -165,4 +165,4 @@ class MonteSingleFileTester(BaseExperiment):
 
     @staticmethod
     def help_str():
-        return """Tries to teach a simple cec resnet for classes read from disk"""
+        return """Runs a monte-carlo style experiment checking on which parts of a file are identified by the model"""

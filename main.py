@@ -15,14 +15,15 @@ def generate_experiments_help_message():
 
 def configure_experiment_parser(parser):
     experiment_parser = parser.add_subparsers()
-
+    experiment_parser.required = True
+    experiment_parser.dest = 'experiment'
     for experiment in experiment_registry.get_experiment_names():
         experiment_help = experiment_registry.get_experiment_help(experiment)
         specific_parser = experiment_parser.add_parser(experiment, description=experiment_help)
 
-        def run(args):
-            experiment_registry.run_experiment(experiment, None)
-        specific_parser.set_defaults(func=run)
+        def run_experiment(args):
+            experiment_registry.run_experiment(args.experiment, None)
+        specific_parser.set_defaults(func=run_experiment)
 
 
 def configure_resampler_parser(parser):

@@ -58,14 +58,8 @@ class SpectrogramAnalysisExperiment(BaseExperiment):
         raw_samples = samples[0][0].cpu().numpy()
         non_augmented_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=False).cpu()
         normalized_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True).cpu()
-<<<<<<< HEAD
-        random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=False, frf_mimic_prob=0, random_poly_cut=False, inverse_poly_cut=False, add_noise=0, random_highpass=True, random_bandcut=True).cpu()
-        # random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=False, frf_mimic_prob=0, random_poly_cut=True, inverse_poly_cut=True, add_noise=0).cpu()
-        # random_spectrogram = spectrogram_generator.generate_spectrogram(samples, normalize_mag=True, frf_mimic=True, frf_mimic_prob=1, random_poly_cut=False, inverse_poly_cut=False, add_noise=0).cpu()
-=======
         random_spectrogram = spectrogram_generator.generate_spectrogram(
             samples, normalize_mag=True, frf_mimic=True, frf_mimic_prob=1, random_poly_cut=False, inverse_poly_cut=False, add_noise=0.01).cpu()
->>>>>>> Change experiment documentation setup
 
         ax1 = fig.add_subplot(subplots[0], subplots[1], 1)
         ax1.set_title("File Waveform")

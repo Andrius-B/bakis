@@ -77,6 +77,7 @@ class MonteSingleFileTester(BaseExperiment):
         model, _ = load_working_model(run_params, model_save_path)
         config = Config()
         target_file = "/media/andrius/FastBoi/bakis_data/final22k/train/Adele - Hello.mp3"
+        # target_file = "/media/andrius/FastBoi/bakis_data/final22k/train/New Order - Blue Monday.mp3"
         if not os.path.isfile(target_file):
             raise RuntimeError(f"Requested file not found at: {target_file}")
         file_info = torchaudio.backend.sox_io_backend.info(target_file)

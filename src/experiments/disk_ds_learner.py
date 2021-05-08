@@ -24,7 +24,7 @@ class DiskDsLearner(BaseExperiment):
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
             R.LR: str(1e-3),
-            R.DISKDS_WINDOW_HOP_TRAIN: str((2**18)),
+            R.DISKDS_WINDOW_HOP_TRAIN: str((2**25)),
             R.DISKDS_WINDOW_HOP_VALIDATION: str((2**20)),
             R.MEASUREMENTS: 'loss,accuracy',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),

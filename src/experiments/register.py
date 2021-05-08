@@ -16,6 +16,7 @@ from .gradcam_experiment import GradCAMExperiment
 from .restore_temp_save_to_zoo import RestoreTempSaveToZooExperiment
 from .search_experiment import SearchExperiment
 from .monte_single_file_tester import MonteSingleFileTester
+from .audio_roc_auc_experiment import AudioRocAucExperiment
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ class ExperimentRegistry:
             'restore-temp-save-to-zoo': RestoreTempSaveToZooExperiment,
             'search': SearchExperiment,
             'monte-file-tester': MonteSingleFileTester,
+            'audio-roc-auc': AudioRocAucExperiment,
         }
 
     def run_experiment(self, experiment_name: str, parameter_overrides: Dict[str, str]):

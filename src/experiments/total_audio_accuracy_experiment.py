@@ -3,9 +3,9 @@ import os
 import torch
 from tqdm import tqdm
 import numpy as np
-from typing import List
+from typing import List, Dict
+import pandas as pd
 import matplotlib.pyplot as plt
-from torchsummary import summary
 from src.experiments.base_experiment import BaseExperiment
 from src.runners.run_parameters import RunParameters
 from src.runners.spectrogram.spectrogram_generator import SpectrogramGenerator
@@ -13,26 +13,15 @@ from src.datasets.dataset_provider import DatasetProvider
 from src.models.res_net_akamaster_audio import *
 from src.models.working_model_loader import *
 from src.runners.run_parameter_keys import R
-from sklearn.metrics import roc_curve
-from sklearn.metrics import roc_auc_score
-from dataclasses import dataclass
 from src.config import Config
 
-@dataclass
-class RocAucResult:
-    class_idx: int
-    false_positive_rate: np.ndarray
-    true_positive_rate: np.ndarray
-    thresholds: np.ndarray
-    roc_auc_score: float
 
-class AudioRocAucExperiment(BaseExperiment):
+class TotalAudioAccuracyExperiment(BaseExperiment):
 
     def get_experiment_default_parameters(self):
         return {
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/final22k/train)',
             R.DISKDS_NUM_FILES: '9500',
-            R.DISKDS_FILE_SUBSET: '1,2,3,4,5,6',
             R.BATCH_SIZE_TRAIN: '75',
             R.CLUSTERING_MODEL: 'mass',
             R.MODEL_SAVE_PATH: 'zoo/9500massv2',
@@ -40,8 +29,8 @@ class AudioRocAucExperiment(BaseExperiment):
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
             R.LR: str(1e-3),
-            R.DISKDS_WINDOW_HOP_TRAIN: str((2**20)),
-            R.DISKDS_WINDOW_HOP_VALIDATION: str((2**12)),
+            R.DISKDS_WINDOW_HOP_TRAIN: str((2**30)),
+            R.DISKDS_WINDOW_HOP_VALIDATION: str((2**16)),
             R.MEASUREMENTS: 'loss,accuracy',
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
             R.DISKDS_TRAIN_FEATURES: 'data,onehot',
@@ -63,27 +52,22 @@ class AudioRocAucExperiment(BaseExperiment):
         self.train_l, self.train_bs, self.valid_l, self.valid_bs = self.dataset_provider.get_datasets(self.run_params)
 
         # roc and auc visualization
-        self.show_roc_auc_curves()
-
-    def show_roc_auc_curves(self):
         with torch.no_grad():
-            roc_auc_results = self.calculate_roc_auc_simple([1, 2, 3, 4, 5, 6])
-            for r in roc_auc_results:
-                name = os.path.basename(self.file_list[r.class_idx])
-                plt.plot(r.false_positive_rate, r.true_positive_rate, marker='.', label=f'class {r.class_idx} AUC={r.roc_auc_score}')
-            plt.xlabel('False Positive Rate')
-            plt.ylabel('True Positive Rate')
-            plt.legend()
-            plt.show()
+            output_data = self.calculate_total_accuracy()
+            df = pd.DataFrame(data=output_data)
+            df.set_index('idx')
+            df.to_csv("audio_accuracy.csv")
 
-    def calculate_roc_auc_simple(self, idxs_to_analyze) -> List[RocAucResult]:
+    def calculate_total_accuracy(self):
         pbar = tqdm(enumerate(self.valid_l, 0), total=len(self.valid_l), leave=True)
         running_loss = 0.0
         predicted_correctly = 0
         predicted_total = 0
         criterion = torch.nn.CrossEntropyLoss()
         softmax = torch.nn.Softmax()
-        predictions_by_label = {}
+        topn = 5
+        correct_guesses_by_class_idx = {}
+        correct_guesses_top5_by_class_idx = {}
         for i, data in pbar:
             samples = data["samples"]
             samples = samples.to(self.config.run_device)
@@ -102,39 +86,55 @@ class AudioRocAucExperiment(BaseExperiment):
             predicted_correctly += correct.sum().item()
             predicted_total += correct.shape[0]
             running_loss += loss.item()
+            top_cats = outputs.clone().topk(topn)[1]
+            # log.info(f"Top cats: {top_cats.shape} -- \n {top_cats}")
+            # log.info(f"Labels: {labels.shape} --\n {labels}")
+            target_expanded = labels.detach().view((-1, 1)).expand_as(top_cats).detach()
+            # log.info(f"Targets labels expanded: {target_expanded.shape} --\n {target_expanded}")
+            topk_correct = target_expanded.eq(top_cats)
+            # log.info(f"Correct: {topk_correct.shape} --\n {topk_correct}")
             labels = labels.detach().to("cpu").numpy()
             outputs = softmax(outputs).detach().to("cpu").numpy()
+            correct = correct.detach().to("cpu").numpy()
+            topk_correct = topk_correct.detach().to("cpu").numpy()
+            
             # log.info(f"Outputs: {outputs}")
             # log.info(f"Labels: {labels}")
             # log.info(f"correct: {correct}")
-            for i, label in enumerate(labels):
-                if label not in predictions_by_label:
-                    predictions_by_label[label] = [outputs[i]]
+            for b_i, idx in enumerate(labels):
+                if idx not in correct_guesses_by_class_idx:
+                    correct_guesses_by_class_idx[idx] = [correct[b_i]]
                 else:
-                    predictions_by_label[label].append(outputs[i])
+                    correct_guesses_by_class_idx[idx].append(correct[b_i])
+            for b_i, idx in enumerate(labels):
+                if idx not in correct_guesses_top5_by_class_idx:
+                    correct_guesses_top5_by_class_idx[idx] = [topk_correct[b_i]]
+                else:
+                    correct_guesses_top5_by_class_idx[idx].append(topk_correct[b_i])
             # log.info(predictions_by_label)
             training_summary = f'[{i + 1:03d}] loss: {running_loss/(i+1):.3f} | acc: {predicted_correctly/predicted_total:.3%}'
             pbar.set_description(training_summary)
             # break
-        results = []
-        collected_predictions = []
-        for idx in idxs_to_analyze:
-            collected_predictions.extend(predictions_by_label[idx])
-        collected_predictions = np.array(collected_predictions)
-        log.info(f"Collected predictions: {collected_predictions.shape} -- \n {collected_predictions.shape}")
-        for idx in idxs_to_analyze:
-            true_classes = []
-            for idx_tmp in idxs_to_analyze:
-                true_classes.extend([int(idx_tmp == idx)]*len(predictions_by_label[idx_tmp]))
-            true_classes = np.array(true_classes)
-            class_preds = collected_predictions[:, idx]
-            log.info(f"roc_auc data:")
-            log.info(f"Classes: {true_classes.shape} -- \n {true_classes.shape}")
-            log.info(f"preds: {class_preds.shape} -- \n {class_preds}")
-            fpr, tpr, thresholds = roc_curve(true_classes, class_preds)
-            score = roc_auc_score(true_classes, class_preds)
-            results.append(RocAucResult(idx, fpr, tpr, thresholds, score))
-        return results
+        output_data = {
+            'idx': [],
+            'accuracy': [],
+            'accuracy_top5': [],
+            'num_samples': [],
+            'file_name': [],
+        }
+        for idx in correct_guesses_by_class_idx:
+            correctness = np.array(correct_guesses_by_class_idx[idx])
+            correctness_top5 = np.array(correct_guesses_top5_by_class_idx[idx])
+            num_samples = correctness.size
+            accuracy = (correctness*1).sum()/num_samples
+            accuracy_top5 = (correctness_top5*1).sum()/num_samples
+            output_data['idx'].append(idx)
+            output_data['accuracy'].append(accuracy)
+            output_data['accuracy_top5'].append(accuracy_top5)
+            output_data['num_samples'].append(num_samples)
+            output_data['file_name'].append(self.file_list[idx])
+            
+        return output_data
 
     @staticmethod
     def help_str():

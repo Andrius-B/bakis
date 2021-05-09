@@ -36,6 +36,10 @@ class DiskDsProvider:
         use_random_pre_sampling_train = bool(self.run_params.getd(R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_TRAIN, "False"))
         use_random_pre_sampling_valid = bool(self.run_params.getd(R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_VALID, "False"))
 
+        file_subet = self.run_params.getd(R.DISKDS_FILE_SUBSET, None)
+        if file_subet is not None:
+            file_subet = [int(x) for x in file_subet.split(',')]
+
         formats_str = self.run_params.getd(R.DISKDS_FORMATS, ".flac,.mp3")
         formats = [x.strip() for x in formats_str.split(",")]
         log.info(f"Loading disk dataset from {self.path}")
@@ -48,7 +52,8 @@ class DiskDsProvider:
             features=train_features,
             formats=formats,
             window_generation_strategy=generation_strategy,
-            sox_effects = FileLoadingSoxEffects(initial_sample_rate=config.sample_rate, final_sample_rate=config.sample_rate, random_pre_resampling=use_random_pre_sampling_train)
+            sox_effects = FileLoadingSoxEffects(initial_sample_rate=config.sample_rate, final_sample_rate=config.sample_rate, random_pre_resampling=use_random_pre_sampling_train),
+            file_subset=file_subet
         )
         log.info("Creating validation dataset..")
         valid_sampling_strategy = UniformReadWindowGenerationStrategy(window_len=self.w_len, window_hop=validation_window_hop, overread=1.09)
@@ -58,7 +63,8 @@ class DiskDsProvider:
             features=valid_features,
             formats=formats,
             window_generation_strategy=valid_sampling_strategy,
-            sox_effects = FileLoadingSoxEffects(initial_sample_rate=config.sample_rate, final_sample_rate=config.sample_rate, random_pre_resampling=use_random_pre_sampling_valid)
+            sox_effects = FileLoadingSoxEffects(initial_sample_rate=config.sample_rate, final_sample_rate=config.sample_rate, random_pre_resampling=use_random_pre_sampling_valid),
+            file_subset=file_subet
         )
 
         loader = DataLoader(train_ds, shuffle=shuffle[0], batch_size=batch_sizes[0], num_workers=22)

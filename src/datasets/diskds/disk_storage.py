@@ -3,7 +3,7 @@ import librosa
 import random
 from torchaudio.backend import sox_io_backend
 from logging import getLogger
-from typing import Generator, List, Optional
+from typing import Generator, List, Optional, Set
 from tqdm import tqdm
 
 log = getLogger(__name__)
@@ -83,6 +83,7 @@ class DiskStorage:
         self._file_limit = -1
         self._file_count = -1
         self._skip_files = skip_files
+        self._file_subset = None
         self._length = -1
         self._formats = formats
         self._file_array = []
@@ -99,13 +100,18 @@ class DiskStorage:
         self._file_limit = file_limit
         return self
 
+    def set_file_subet(self, file_idx_list: Set[int]):
+        self._file_subset = file_idx_list
+
     def idx_generator(self):
         idxs_generated = 0
         files_iterated = 0
         skipped_files = 0
         running_window_length = -1
         file_paths = list(self.get_audio_file_paths())
-        for file in file_paths:
+        for i, file in enumerate(file_paths):
+            if self._file_subset is not None and i not in self._file_subset:
+                continue
             if(skipped_files < self._skip_files):
                 skipped_files += 1
                 continue

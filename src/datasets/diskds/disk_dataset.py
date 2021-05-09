@@ -1,5 +1,5 @@
 from src.datasets.diskds.base_dataset import BaseDataset
-from typing import List
+from typing import List, Set
 from src.datasets.diskds.disk_storage import DiskStorage, SpecificAudioFileWindow, RandomAudioFileWindow, RandomSubsampleWindowGenerationStrategy
 from src.datasets.diskds.sox_transforms import FileLoadingSoxEffects
 from mutagen import File
@@ -31,10 +31,12 @@ class DiskDataset(BaseDataset):
             storage_type=DiskStorage,
             config: Config = Config(),
             sox_effects: torch.nn.Module = None,
+            file_subset: Set[int] = None,
             **kwargs):
         self._disk_storage = storage_type(root_directory, **kwargs)
         self._disk_storage.limit_size(size_limit)
         self._disk_storage.limit_files(file_limit)
+        self._disk_storage.set_file_subet(file_subset)
         log.info("Generating sample idx's ...")
         self._idx_list = list(self._disk_storage.idx_generator())
         self._features = features

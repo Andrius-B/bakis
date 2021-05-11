@@ -26,7 +26,7 @@ class MassClustering(nn.Module):
 
     def forward(self, input):
         # centroids out of the output latent space don't make sense - clamp them in
-        self.centroids.data = torch.clamp(self.centroids, 0, 1)
+        self.centroids.data = torch.clamp(self.centroids, 0.5, 1)
         # self.cluster_mass.data = torch.clamp(self.cluster_mass, 1e-3, 3)
         # we need to convert the input point so that we can
         # perform other operations as matrix ops.

@@ -215,10 +215,10 @@ def upload_file():
                     track_name, _ = os.path.splitext(track_name)
                     if model_type == "cec":
                         graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_sizes[track_idx].item()), None))
-                        log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_size={cluster_sizes[track_idx].item()}")
+                        log.info(f"\t({track_idx}){track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_size={cluster_sizes[track_idx].item()}")
                     elif model_type == "mass":
                         graph_nodes.append(GraphNode(track_idx, track_name, float(cluster_mass[track_idx].item()), None))
-                        log.info(f"\t{track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_mass={cluster_mass[track_idx].item()}")
+                        log.info(f"\t({track_idx}){track_name}: {sorted_sample_avg_distances_to_clusters[track_idx]} cluster_mass={cluster_mass[track_idx].item()}")
                     graph_links.append(GraphLink(-1, track_idx, float(sorted_sample_avg_distances_to_clusters[track_idx])))
 
                 topn_links = []

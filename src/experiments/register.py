@@ -18,6 +18,7 @@ from .search_experiment import SearchExperiment
 from .monte_single_file_tester import MonteSingleFileTester
 from .audio_roc_auc_experiment import AudioRocAucExperiment
 from .total_audio_accuracy_experiment import TotalAudioAccuracyExperiment
+from .audio_cluster_size_variation_experiment import AudioClusterSizeVariationExperiment
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ class ExperimentRegistry:
             'monte-file-tester': MonteSingleFileTester,
             'audio-roc-auc': AudioRocAucExperiment,
             'total-audio-accuracy': TotalAudioAccuracyExperiment,
+            'audio-cluster-size-variation': AudioClusterSizeVariationExperiment,
         }
 
     def run_experiment(self, experiment_name: str, parameter_overrides: Dict[str, str]):

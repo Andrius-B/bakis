@@ -138,4 +138,4 @@ class TotalAudioAccuracyExperiment(BaseExperiment):
 
     @staticmethod
     def help_str():
-        return """Validation experiment for the audio models, that displays ROC curves"""
+        return """Validation experiment for the audio models, that runs a bigger accuracy test across the validation set"""

@@ -54,7 +54,7 @@ class AudioOneShotExperiment(BaseExperiment):
         self.train_l, self.train_bs, self.valid_l, self.valid_bs = self.dataset_provider.get_datasets(self.run_params)
 
         sample_output_centroid_positions = torch.Tensor()
-        with MemoryFileDiskStorage("/media/andrius/FastBoi/test_samples/05 - Someday.mp3", format="mp3", run_params=self.run_params, features=["data"]) as memory_storage:
+        with MemoryFileDiskStorage("/media/andrius/FastBoi/test_samples/The Strokes -  Someday (Excerpt).mp3", format="mp3", run_params=self.run_params, features=["data"]) as memory_storage:
         # with MemoryFileDiskStorage("/media/andrius/FastBoi/bakis_data/final22k/train/New Order - Blue Monday.mp3", format="mp3", run_params=self.run_params, features=["data"]) as memory_storage:
             loader = DataLoader(memory_storage, shuffle=False, batch_size=80, num_workers=0)
             pbar = tqdm(loader, total=len(loader), leave=True)
@@ -96,7 +96,7 @@ class AudioOneShotExperiment(BaseExperiment):
         self.model.load_state_dict(torch.load("temp_oneshot.pth"))
         self.model = self.model.to("cuda")
 
-        with MemoryFileDiskStorage("/media/andrius/FastBoi/test_samples/05 - Someday.mp3", format="mp3", run_params=self.run_params, features=["data"]) as memory_storage:
+        with MemoryFileDiskStorage("/media/andrius/FastBoi/test_samples/The Strokes -  Someday (FULL).mp3", format="mp3", run_params=self.run_params, features=["data"]) as memory_storage:
         # with MemoryFileDiskStorage("/media/andrius/FastBoi/bakis_data/final22k/train/New Order - Blue Monday.mp3", format="mp3", run_params=self.run_params, features=["data"]) as memory_storage:
             loader = DataLoader(memory_storage, shuffle=False, batch_size=80, num_workers=0)
             pbar = tqdm(enumerate(loader), total=len(loader), leave=True)
@@ -126,8 +126,7 @@ class AudioOneShotExperiment(BaseExperiment):
                     predicted_total += correct.shape[0]
                     running_loss += loss.item()
                     top_cats = outputs.clone().topk(topn)[1]
-                    # log.info(f"Top cats: {top_cats.shape} -- \n {top_cats}")
-                    # log.info(f"Labels: {labels.shape} --\n {labels}")
+
                     target_expanded = labels.detach().view((-1, 1)).expand_as(top_cats).detach()
                     # log.info(f"Targets labels expanded: {target_expanded.shape} --\n {target_expanded}")
                     topk_correct = target_expanded.eq(top_cats)

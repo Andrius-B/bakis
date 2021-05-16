@@ -5,6 +5,7 @@ from torchaudio.backend import sox_io_backend
 from logging import getLogger
 from typing import Generator, List, Optional, Set
 from tqdm import tqdm
+from .dataset_index import SongSubset
 
 log = getLogger(__name__)
 
@@ -68,6 +69,26 @@ class RandomAudioFileWindow:
         window_index = int(window[1:-1].split(",")[0])
         window_len = float(window[1:-1].split(",")[1])
         return RandomAudioFileWindow(storage, int(file_id), window_index, window_len)
+
+class LimitedRandomAudioFileWindow:
+    """
+    RandomAudioFileWindow only contains information about the filepath to be read and has an index from that file
+    with a specified duration,
+    but is does not have information about the offset of the window. This is intended to 
+    be a random read of the specified length from the given file.
+    file_index - index of the target file in the storage_ref
+    window_len - length in samples
+    window_index - integer index, should be unique per file.
+    """
+
+    def __init__(self, storage_ref, file_index: int, window_index: int, window_len: int, limit_start: float, limit_end: float):
+        self.storage = storage_ref
+        self.file_index = file_index
+        self.window_len = window_len
+        self.window_index = window_index
+
+    def get_filepath(self) -> str:
+        return self.storage._file_array[self.file_index]
 
 
 class DiskStorage:
@@ -230,6 +251,37 @@ class RandomSubsampleWindowGenerationStrategy:
         window_len: int = 2**16,
         average_hop: int = 2**16,
         overread: float = 1.08
+    ):
+        """Parameters here are sample counts"""
+        self.window_len: int = int(window_len * overread)
+        self.average_hop: int = average_hop
+
+    def generate_windows(self, file, storage):
+        metadata = sox_io_backend.info(file)
+        duration = metadata.num_frames
+        window_size = self.window_len
+        i = 0  # index measued in samples
+        step = self.average_hop
+        generated_windows = 0
+        f_id = storage._file_array.index(file)
+        while(i < duration - window_size):
+            yield RandomAudioFileWindow(storage, f_id, generated_windows, window_size)
+            i += step
+            generated_windows += 1
+
+class RandomSubsampleIndexBasedWindowGenerationStrategy:
+    """
+    Window generation strategy that generates a preset amount of windows per file depending on duration,
+    it only lists the index of the window. This is intended to be used for a random read of the required length
+    to generate less windows.
+    """
+
+    def __init__(
+        self,
+        dataset_index: List[SongSubset],
+        window_len: int = 2**16,
+        average_hop: int = 2**16,
+        overread: float = 1.08,
     ):
         """Parameters here are sample counts"""
         self.window_len: int = int(window_len * overread)

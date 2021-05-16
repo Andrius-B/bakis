@@ -4,6 +4,7 @@ from src.config import Config
 from src.experiments.register import ExperimentRegistry
 from src.tools.resample_to_flacs import Resampler
 from src.tools.random_copy import RandomCopy
+from src.tools.set_splitter import SetSplitter
 
 experiment_registry = ExperimentRegistry()
 
@@ -34,6 +35,14 @@ def configure_resampler_parser(parser):
         resampler.run(args)
     parser.set_defaults(func=run)
 
+def configure_set_splitter_parser(parser):
+    splitter = SetSplitter()
+    splitter.configure_argument_parser(parser)
+
+    def run(args):
+        splitter.run(args)
+    parser.set_defaults(func=run)
+
 
 def configure_copier_parser(parser):
     copier = RandomCopy()
@@ -60,6 +69,10 @@ if __name__ == "__main__":
     # copier parser
     copier_parser = subparsers.add_parser("copy", help="Run random copying tool")
     configure_copier_parser(copier_parser)
+
+    # set splitter
+    splitter_parser = subparsers.add_parser("split", help="Run training/test split file generation tool")
+    configure_set_splitter_parser(splitter_parser)
 
     args = parser.parse_args()
     if hasattr(args, 'func'):

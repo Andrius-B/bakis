@@ -23,10 +23,10 @@ class AudioOneShotExperiment(BaseExperiment):
     def get_experiment_default_parameters(self):
         return {
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/final22k/train)',
-            R.DISKDS_NUM_FILES: '9500',
+            R.DISKDS_NUM_FILES: '100',
             R.BATCH_SIZE_TRAIN: '75',
             R.CLUSTERING_MODEL: 'mass',
-            R.MODEL_SAVE_PATH: 'zoo/9500massv2',
+            R.MODEL_SAVE_PATH: 'zoo/100massv2',
             R.EPOCHS: '40',
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
@@ -68,7 +68,7 @@ class AudioOneShotExperiment(BaseExperiment):
                         random_bandcut=False, normalize_mag=True)
                     outputs = self.model(spectrogram)
                     batch_sample_distances = self.model.distance_output.detach().to("cpu")
-                    batch_sample_distances = torch.sigmoid(batch_sample_distances)
+                    batch_sample_distances = torch.tanh(batch_sample_distances)
                     sample_output_centroid_positions = torch.cat([sample_output_centroid_positions, batch_sample_distances])
         log.info(f"Sample output centroid positions {sample_output_centroid_positions.shape} -- \n {sample_output_centroid_positions}")
         log.info(f"Position deviation: {torch.std(sample_output_centroid_positions, dim=0)}")
@@ -84,15 +84,15 @@ class AudioOneShotExperiment(BaseExperiment):
         self.model.classification[-1].centroids = torch.nn.Parameter(new_centroids)
 
         masses = self.model.classification[-1].cluster_mass.data
-        masses = torch.cat((masses, torch.tensor(0.39650386571884155).view(-1)))
+        masses = torch.cat((masses, torch.tensor(0.1).view(-1)))
         self.model.classification[-1].cluster_mass = torch.nn.Parameter(masses)
         self.model = self.model.to("cuda")
         
         torch.save(self.model.state_dict(), "temp_oneshot.pth")
 
-
-        self.model.classification[-1].centroids = torch.nn.Parameter(torch.zeros(9501,256))
-        self.model.classification[-1].cluster_mass = torch.nn.Parameter(torch.zeros((9501,)))
+        target_idx = len(self.file_list)
+        self.model.classification[-1].centroids = torch.nn.Parameter(torch.zeros(new_centroids.shape[-2],centroids.shape[-1]))
+        self.model.classification[-1].cluster_mass = torch.nn.Parameter(torch.zeros(masses.shape))
         self.model.load_state_dict(torch.load("temp_oneshot.pth"))
         self.model = self.model.to("cuda")
 
@@ -114,7 +114,7 @@ class AudioOneShotExperiment(BaseExperiment):
                         timestretch=False, random_highpass=False,
                         random_bandcut=False, normalize_mag=True)
                     outputs = self.model(spectrogram)
-                    labels = torch.full((outputs.shape[-2],), 9500).to("cuda")
+                    labels = torch.full((outputs.shape[-2],), target_idx).to("cuda")
                     log.info(f"Output vec: {outputs.shape} -- \n {outputs}")
                     log.info(f"Label vec: {labels.shape} -- \n {labels}")
                     loss = criterion(outputs, labels.view(labels.shape[0],))

@@ -56,8 +56,13 @@ class AudioRunner(AbstractRunner):
         lr = float(self.run_params.getd(R.LR, 1e-3))
         wd = float(self.run_params.getd(R.WEIGHT_DECAY, 0))
         optimizer = optim = torch.optim.Adam([
-            { 'params': self.model.parameters() },
-            { 'params': self.model.classification[-1].cluster_mass, 'wd' : 0.2 }
+            { 'params': self.model.conv1.parameters() },
+            { 'params': self.model.bn1.parameters() },
+            { 'params': self.model.resnet_layers.parameters() },
+            { 'params': self.model.layer6.parameters() },
+            { 'params': self.model.classification[-1].g_constant  },
+            { 'params': self.model.classification[-1].centroids  },
+            { 'params': self.model.classification[-1].cluster_mass, 'weight_decay' : 0.1 }
             ], lr, weight_decay=wd)
         sheduler = StepLR(optimizer, step_size=30, gamma=0.1)
         criterion = self.create_criterion().to(self.config.run_device)

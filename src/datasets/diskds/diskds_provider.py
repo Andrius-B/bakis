@@ -8,7 +8,7 @@ from src.datasets.diskds.disk_dataset import DiskDataset, RandomReadDiskDataset
 from src.datasets.diskds.disk_storage import DiskStorage
 import src.runners.run_parameters
 from src.config import Config
-from typing import List
+from typing import List, Tuple
 
 log = getLogger(__name__)
 
@@ -22,7 +22,7 @@ class DiskDsProvider:
         self.num_files = int(run_params.getd(R.DISKDS_NUM_FILES, str(-1)))
         self.run_params = run_params
 
-    def get_disk_dataset(self, batch_sizes: (int, int), shuffle: (bool, bool), config: Config = Config()):
+    def get_disk_dataset(self, batch_sizes: Tuple(int, int), shuffle: Tuple(bool, bool), config: Config = Config()):
         
         train_features_str = self.run_params.getd(R.DISKDS_TRAIN_FEATURES, "data,onehot")
         train_features = [x.strip() for x in train_features_str.split(",")]

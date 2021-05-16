@@ -126,14 +126,14 @@ class AudioAnalyzeExperiment(BaseExperiment):
         return {
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/final22k/train)',
             R.CLUSTERING_MODEL: 'mass',
-            R.DISKDS_NUM_FILES: '9500'
+            R.DISKDS_NUM_FILES: '1000'
         }
 
     def run(self):
         run_params = super().get_run_params()
         method = 'T-SNE'
         playlists = self.load_spotify_playlists()
-        net, files = load_working_model(run_params, 'zoo/9500massv2', reload_classes_from_dataset=False)
+        net, files = load_working_model(run_params, 'zoo/1000massv1', reload_classes_from_dataset=False)
         clustering_module = net.classification[-1].cpu()
 
         def playlist_resolver(idx):

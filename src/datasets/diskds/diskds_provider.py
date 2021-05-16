@@ -1,11 +1,13 @@
 import re
 from logging import getLogger
 from torch.utils.data import DataLoader
-from .disk_storage import UniformReadWindowGenerationStrategy, RandomSubsampleWindowGenerationStrategy
+from .disk_storage import UniformReadWindowGenerationStrategy, RandomSubsampleWindowGenerationStrategy, UniformReadIndexBasedWindowGenerationStrategy, RandomSubsampleIndexBasedWindowGenerationStrategy
 from src.datasets.diskds.sox_transforms import FileLoadingSoxEffects
 from src.runners.run_parameter_keys import R
 from src.datasets.diskds.disk_dataset import DiskDataset, RandomReadDiskDataset
 from src.datasets.diskds.disk_storage import DiskStorage
+from src.datasets.diskds.dataset_index import DatasetSplitIndex
+import os
 import src.runners.run_parameters
 from src.config import Config
 from typing import List, Tuple
@@ -22,7 +24,7 @@ class DiskDsProvider:
         self.num_files = int(run_params.getd(R.DISKDS_NUM_FILES, str(-1)))
         self.run_params = run_params
 
-    def get_disk_dataset(self, batch_sizes: Tuple(int, int), shuffle: Tuple(bool, bool), config: Config = Config()):
+    def get_disk_dataset(self, batch_sizes: Tuple[int, int], shuffle: Tuple[bool, bool], config: Config = Config()):
         
         train_features_str = self.run_params.getd(R.DISKDS_TRAIN_FEATURES, "data,onehot")
         train_features = [x.strip() for x in train_features_str.split(",")]
@@ -44,6 +46,32 @@ class DiskDsProvider:
         formats = [x.strip() for x in formats_str.split(",")]
         log.info(f"Loading disk dataset from {self.path}")
         generation_strategy = RandomSubsampleWindowGenerationStrategy(window_len=self.w_len, average_hop=train_window_hop, overread=1.08)
+        valid_sampling_strategy = UniformReadWindowGenerationStrategy(window_len=self.w_len, window_hop=validation_window_hop, overread=1.09)
+        dataset_index = DatasetSplitIndex.from_directory(self.path)
+        if dataset_index is None:
+            log.warn(f"Dataset index was not created, using default non split datasets..")
+        else:
+            train_song_subsets = dataset_index.get_dataset_subsets("train")
+            test_song_subsets = dataset_index.get_dataset_subsets("test")
+            log.info(f"Dataset splits contain: {len(train_song_subsets)} train songs and {len(test_song_subsets)} test songs")
+            generation_strategy = RandomSubsampleIndexBasedWindowGenerationStrategy(
+                train_song_subsets,
+                window_len=self.w_len,
+                average_hop=train_window_hop,
+                overread=1.08
+            )
+            # generation_strategy = UniformReadIndexBasedWindowGenerationStrategy(
+            #     train_song_subsets,
+            #     window_len=self.w_len,
+            #     window_hop=validation_window_hop,
+            #     overread=1.09
+            # )
+            valid_sampling_strategy = UniformReadIndexBasedWindowGenerationStrategy(
+                test_song_subsets,
+                window_len=self.w_len,
+                window_hop=validation_window_hop,
+                overread=1.09
+            )
         # generation_strategy = UniformReadWindowGenerationStrategy(window_len=w_len, window_hop=(2**16)*10)
         log.info("Creating train dataset..")
         train_ds = DiskDataset(
@@ -56,7 +84,6 @@ class DiskDsProvider:
             file_subset=file_subet
         )
         log.info("Creating validation dataset..")
-        valid_sampling_strategy = UniformReadWindowGenerationStrategy(window_len=self.w_len, window_hop=validation_window_hop, overread=1.09)
         valid_ds = DiskDataset(
             self.path,
             file_limit=self.num_files,
@@ -66,10 +93,9 @@ class DiskDsProvider:
             sox_effects = FileLoadingSoxEffects(initial_sample_rate=config.sample_rate, final_sample_rate=config.sample_rate, random_pre_resampling=use_random_pre_sampling_valid),
             file_subset=file_subet
         )
-
-        loader = DataLoader(train_ds, shuffle=shuffle[0], batch_size=batch_sizes[0], num_workers=22)
-        valid_loader = DataLoader(valid_ds, shuffle=shuffle[1], batch_size=batch_sizes[1], num_workers=24)
         log.info(f"Imported dataset sizes -> train_ds: {len(train_ds)} valid_ds: {len(valid_ds)}")
+        loader = DataLoader(train_ds, shuffle=shuffle[0], batch_size=batch_sizes[0], num_workers=22) #22
+        valid_loader = DataLoader(valid_ds, shuffle=shuffle[1], batch_size=batch_sizes[1], num_workers=24) # 24
         return (loader, batch_sizes[0], valid_loader, batch_sizes[1])
     
     def get_file_list(self) -> List[str]:

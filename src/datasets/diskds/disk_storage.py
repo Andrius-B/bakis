@@ -86,6 +86,8 @@ class LimitedRandomAudioFileWindow:
         self.file_index = file_index
         self.window_len = window_len
         self.window_index = window_index
+        self.limit_start = limit_start
+        self.limit_end = limit_end
 
     def get_filepath(self) -> str:
         return self.storage._file_array[self.file_index]
@@ -141,6 +143,8 @@ class DiskStorage:
                 if(isinstance(window, SpecificAudioFileWindow)):
                         window_len = window.window_end - window.window_start
                 elif(isinstance(window, RandomAudioFileWindow)):
+                    window_len = window.window_len
+                elif isinstance(window, LimitedRandomAudioFileWindow):
                     window_len = window.window_len
 
                 if(running_window_length < 0):
@@ -286,16 +290,79 @@ class RandomSubsampleIndexBasedWindowGenerationStrategy:
         """Parameters here are sample counts"""
         self.window_len: int = int(window_len * overread)
         self.average_hop: int = average_hop
+        self.reverse_range_index = {}
+        # print(dataset_index)
+        for song_subset in dataset_index:
+            basename = os.path.basename(song_subset.filepath)
+            self.reverse_range_index[basename] = (song_subset.start, song_subset.end)
 
     def generate_windows(self, file, storage):
+        file_basename = os.path.basename(file)
+        file_range = (0.0,1.0)
+        if file_basename not in self.reverse_range_index:
+            log.warn(f"File {file} is not in the dataset index, using full file")
+        else:
+            file_range = self.reverse_range_index[file_basename]
         metadata = sox_io_backend.info(file)
         duration = metadata.num_frames
         window_size = self.window_len
-        i = 0  # index measued in samples
+        i = duration * file_range[0]  # index measued in samples
         step = self.average_hop
         generated_windows = 0
         f_id = storage._file_array.index(file)
-        while(i < duration - window_size):
-            yield RandomAudioFileWindow(storage, f_id, generated_windows, window_size)
+        while(i < (duration * file_range[1]) - window_size):
+            yield LimitedRandomAudioFileWindow(storage, f_id, generated_windows, window_size, file_range[0], file_range[1])
             i += step
             generated_windows += 1
+        # log.info(f"File {file_basename} generated {generated_windows} windows")
+
+class UniformReadIndexBasedWindowGenerationStrategy:
+    """
+    Window generation strategy that reads windows from a file with a uniform step
+    This generates A LOT of windows.
+    """
+
+    def __init__(
+        self,
+        dataset_index: List[SongSubset],
+        window_len: int = 2**16,
+        window_hop: int = (2**16 / 4),
+        overread: int = 1.08
+    ):
+        """Parameters here are sample counts"""
+        self.window_len: int = window_len
+        self.window_hop: int = window_hop
+        self.overread = overread
+        self.reverse_range_index = {}
+        for song_subset in dataset_index:
+            basename = os.path.basename(song_subset.filepath)
+            self.reverse_range_index[basename] = (song_subset.start, song_subset.end)
+
+    def generate_windows(self, file, storage, file_format: Optional[str] = None):
+        file_basename = os.path.basename(file)
+        file_range = (0.0,1.0)
+        if file_basename not in self.reverse_range_index:
+            # log.warn(f"File {file} is not in the dataset index, skipping file")
+            return
+        else:
+            file_range = self.reverse_range_index[file_basename]
+        # print(f"getting info for file of type: {file_format}")
+        metadata = sox_io_backend.info(file, file_format)
+        # print(f"Metadata of the file: {metadata.__dict__}")
+        duration = metadata.num_frames
+        if(metadata.num_frames == 0 and not isinstance(file, str)):
+            samples, sr = sox_io_backend.load(file, format=file_format)
+            duration = samples.shape[-1]
+
+        window_size = self.window_len
+        i = duration * file_range[0]  # index measued in samples
+        step = self.window_hop  # leave overlap.
+        while(i < (duration * file_range[1]) - (window_size * self.overread)):
+            f_id = -1
+            if isinstance(file, str):
+                f_id = storage._file_array.index(file)
+            # w = SpecificAudioFileWindow(storage, f_id, i, i + window_size)
+            # print(f"Generated window: {str(w)} max offset: {duration - window_size} current offset: {i}")
+            window_end = i + int(window_size * self.overread)
+            yield SpecificAudioFileWindow(storage, f_id, round(i), round(window_end))
+            i += step

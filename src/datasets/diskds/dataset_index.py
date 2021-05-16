@@ -31,9 +31,11 @@ class DatasetSplitIndex:
         datasets = {}
         for dataset_name in dataset_names:
             dataset_objects = []
-            for row in df[df["dataset"] == dataset_name]:
-                dataset_objects.append(SongSubset(row["filepath"], float(row["start"]), float(row["end"])))
+            for row in df[df["dataset"] == dataset_name].itertuples():
+                # print(row)
+                dataset_objects.append(SongSubset(row.filepath, float(row.start), float(row.end)))
             datasets[dataset_name] = dataset_objects
+        log.info(f"Dataset index loaded, containing the following sets: {datasets.keys()}")
         return DatasetSplitIndex(datasets)
         
 
@@ -55,3 +57,8 @@ class DatasetSplitIndex:
                 data['end'].append(song_subset.end)
         df = pd.DataFrame(data=data)
         df.to_csv(target_file)
+
+    def get_dataset_subsets(self, dataset_name) -> List[SongSubset]:
+        dataset = self.datasets[dataset_name]
+        log.info(f"Requested dataset {dataset_name} contains {len(dataset)} songs")
+        return dataset

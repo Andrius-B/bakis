@@ -6,6 +6,7 @@ from src.datasets.diskds.diskds_provider import DiskDsProvider
 from src.datasets.diskds.sqliteds_provider import SQLiteDsProvider
 from src.runners.run_parameter_keys import R
 import src.runners.run_parameters
+from typing import Tuple
 import torchvision.datasets as datasets
 
 class DatasetProvider:
@@ -20,7 +21,7 @@ class DatasetProvider:
         run_params,
         # batch_sizes: (int, int) = (512, 128),
         # shuffle: (bool, bool) = (True, False),
-    ) -> (DataLoader, int, DataLoader, int):
+    ) -> Tuple[DataLoader, int, DataLoader, int]:
         batch_sizes = (int(run_params.getd(R.BATCH_SIZE_TRAIN, '512')), int(run_params.getd(R.BATCH_SIZE_VALIDATION, '128')))
         shuffle = (bool(run_params.getd(R.SHUFFLE_TRAIN, 'True')), bool(run_params.getd(R.SHUFFLE_VALIDATION, 'False')))
         dataset_name = run_params.get_dataset_name()
@@ -35,9 +36,9 @@ class DatasetProvider:
             
 
     def get_cifar10(self,
-        batch_sizes: (int, int),
-        shuffle: (bool, bool)
-        ) -> (DataLoader, int, DataLoader, int):
+        batch_sizes: Tuple[int, int],
+        shuffle: Tuple[bool, bool]
+        ) -> Tuple[DataLoader, int, DataLoader, int]:
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
         train_loader = torch.utils.data.DataLoader(
@@ -60,9 +61,9 @@ class DatasetProvider:
         return (train_loader, batch_sizes[0], val_loader, batch_sizes[1])
 
     def get_cifar100(self,
-        batch_sizes: (int, int),
-        shuffle: (bool, bool)
-        ) -> (DataLoader, int, DataLoader, int):
+        batch_sizes: Tuple[int, int],
+        shuffle: Tuple[bool, bool]
+        ) -> Tuple[DataLoader, int, DataLoader, int]:
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
         train_loader = torch.utils.data.DataLoader(

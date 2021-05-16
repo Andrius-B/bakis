@@ -1,6 +1,6 @@
 from src.datasets.diskds.base_dataset import BaseDataset
 from typing import List, Set
-from src.datasets.diskds.disk_storage import DiskStorage, SpecificAudioFileWindow, RandomAudioFileWindow, RandomSubsampleWindowGenerationStrategy
+from src.datasets.diskds.disk_storage import DiskStorage, LimitedRandomAudioFileWindow, SpecificAudioFileWindow, RandomAudioFileWindow, RandomSubsampleWindowGenerationStrategy
 from src.datasets.diskds.sox_transforms import FileLoadingSoxEffects
 from mutagen import File
 from src.config import Config
@@ -39,6 +39,7 @@ class DiskDataset(BaseDataset):
         self._disk_storage.set_file_subet(file_subset)
         log.info("Generating sample idx's ...")
         self._idx_list = list(self._disk_storage.idx_generator())
+        log.info(f"Generated {len(self._idx_list)} idx's")
         self._features = features
         self._file_list: List[str] = None
         self._samples_length_runnging = None
@@ -92,6 +93,10 @@ class DiskDataset(BaseDataset):
             # max_offset = min(30, (file_duration-duration))
             max_offset = file_duration-duration-1
             offset = int(random.uniform(0.0, max_offset))
+        elif isinstance(window, LimitedRandomAudioFileWindow):
+            duration = window.window_len
+            max_offset = (file_duration*window.limit_end)-duration-1
+            offset = int(random.uniform(file_duration*window.limit_start, max_offset))
         else:
             raise AttributeError(f"Unknown type of window: {type(window)}")
         if(offset + duration >= file_duration):
@@ -99,11 +104,16 @@ class DiskDataset(BaseDataset):
             max_offset = file_duration-duration-1
             offset = int(random.uniform(0.0, max_offset))
         win_len_frames = duration
+        # test split validation: train samples should have normalized offset in the range of (0.0;0.5) and test samples in the range of (0.5;1.0):
+        # if "T.N.T" in window.get_filepath():
+        #     range_start = offset/file_duration
+        #     log.info(f"Loading window with offset = {int(offset)}/{range_start} num_frames={int(win_len_frames)} normalization={False} and fp={window.get_filepath()}")
+
         # the sox_io_backend is slow as fuuuuuu, I can't update
         samples, sample_rate = torchaudio.backend.sox_backend.load(
             window.get_filepath(),
             offset=int(offset),
-            num_frames=win_len_frames,
+            num_frames=int(win_len_frames),
             normalization=False,
         )
         if(samples.shape[1] != win_len_frames):
@@ -112,6 +122,8 @@ class DiskDataset(BaseDataset):
                 window_type = "SpecificAudioFileWindow"
             elif isinstance(window, RandomAudioFileWindow):
                 window_type = "RandomAudioFileWindow"
+            elif isinstance(window, LimitedRandomAudioFileWindow):
+                window_type = "LimitedRandomAudioFileWindow"
             else:
                 window_type = "unknown"
             difference = win_len_frames - samples.shape[1]

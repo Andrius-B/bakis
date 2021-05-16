@@ -284,7 +284,7 @@ class ResNet(nn.Module):
                 # nn.Sigmoid(),
                 # nn.Linear(in_features, self.ce_dim_count),
 
-                nn.Sigmoid(),
+                nn.Tanh(),
                 MassClustering(
                     # n_dim=self.ce_dim_count,
                     n_dim=in_features,

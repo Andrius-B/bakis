@@ -70,3 +70,5 @@ class R:
     DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_VALID = RunParameterKey("diskds_use_sox_random_pre_sampling_valid")
 
     DISKDS_FILE_SUBSET = RunParameterKey("diskds_file_subset")
+
+    DISKDS_USE_DATASET_INDEX = RunParameterKey("diskds_use_dataset_index")

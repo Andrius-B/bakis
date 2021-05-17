@@ -23,10 +23,10 @@ class AudioOneShotExperiment(BaseExperiment):
     def get_experiment_default_parameters(self):
         return {
             R.DATASET_NAME: 'disk-ds(/media/andrius/FastBoi/bakis_data/final22k/train)',
-            R.DISKDS_NUM_FILES: '100',
+            R.DISKDS_NUM_FILES: '9500',
             R.BATCH_SIZE_TRAIN: '75',
             R.CLUSTERING_MODEL: 'mass',
-            R.MODEL_SAVE_PATH: 'zoo/100massv2',
+            R.MODEL_SAVE_PATH: 'zoo/9500massv3',
             R.EPOCHS: '40',
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
@@ -38,6 +38,7 @@ class AudioOneShotExperiment(BaseExperiment):
             R.DISKDS_TRAIN_FEATURES: 'data,onehot',
             R.DISKDS_VALID_FEATURES: 'data,onehot',
             R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_TRAIN: 'True',
+            R.DISKDS_USE_DATASET_INDEX: 'False',
         }
 
     def run(self):
@@ -84,7 +85,7 @@ class AudioOneShotExperiment(BaseExperiment):
         self.model.classification[-1].centroids = torch.nn.Parameter(new_centroids)
 
         masses = self.model.classification[-1].cluster_mass.data
-        masses = torch.cat((masses, torch.tensor(0.1).view(-1)))
+        masses = torch.cat((masses, torch.tensor(0.02877584192901845).view(-1)))
         self.model.classification[-1].cluster_mass = torch.nn.Parameter(masses)
         self.model = self.model.to("cuda")
         

@@ -35,8 +35,9 @@ class DiskDsProvider:
         train_window_hop = int(self.run_params.getd(R.DISKDS_WINDOW_HOP_TRAIN, str((2**16)*8)))
         validation_window_hop = int(self.run_params.getd(R.DISKDS_WINDOW_HOP_VALIDATION, str((2**16)*8)))
 
-        use_random_pre_sampling_train = bool(self.run_params.getd(R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_TRAIN, "False"))
-        use_random_pre_sampling_valid = bool(self.run_params.getd(R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_VALID, "False"))
+        use_random_pre_sampling_train = self.run_params.getd(R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_TRAIN, "False") == "True"
+        use_random_pre_sampling_valid = self.run_params.getd(R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_VALID, "False") == "True"
+        use_dataset_index = self.run_params.getd(R.DISKDS_USE_DATASET_INDEX, "True") == "True"
 
         file_subet = self.run_params.getd(R.DISKDS_FILE_SUBSET, None)
         if file_subet is not None:
@@ -50,6 +51,8 @@ class DiskDsProvider:
         dataset_index = DatasetSplitIndex.from_directory(self.path)
         if dataset_index is None:
             log.warn(f"Dataset index was not created, using default non split datasets..")
+        elif not use_dataset_index:
+            log.warn(f"Not using dataset index as configured per runtime params")
         else:
             train_song_subsets = dataset_index.get_dataset_subsets("train")
             test_song_subsets = dataset_index.get_dataset_subsets("test")

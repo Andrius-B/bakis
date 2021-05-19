@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import librosa
 import torchaudio
 from src.util.mutagen_utils import read_mp3_metadata
+from src.datasets.diskds.memory_file_storage import MemoryFileDiskStorage
 from src.config import Config
 import matplotlib.cm
 
@@ -38,8 +39,8 @@ class MonteSingleFileTester(BaseExperiment):
             R.DISKDS_NUM_FILES: '9500',
             R.BATCH_SIZE_TRAIN: '75',
             R.CLUSTERING_MODEL: 'mass',
-            R.MODEL_SAVE_PATH: 'zoo/9500massv2',
-            R.EPOCHS: '2',
+            R.MODEL_SAVE_PATH: 'zoo/9500massv3',
+            R.EPOCHS: '4',
             R.BATCH_SIZE_VALIDATION: '150',
             R.DISKDS_WINDOW_HOP_TRAIN: str((2**17)),
             R.DISKDS_WINDOW_LENGTH: str((2**17)),
@@ -58,8 +59,9 @@ class MonteSingleFileTester(BaseExperiment):
         ampToDb_t = torchaudio.transforms.AmplitudeToDB().to(config.run_device)
 
         full_samples, sample_rate = torchaudio.load(filepath)
-        full_samples = full_samples.to("cpu").view((1, -1))
+        full_samples = full_samples.to("cpu")
         full_samples, sample_rate = FileLoadingSoxEffects(sample_rate, config.sample_rate, False).forward(full_samples)
+        print(f"Full samsples shape: {full_samples.shape}")
         full_samples = full_samples.to(config.run_device)
         spectrogram = spectrogram_t_viz(full_samples.view(1, -1))
         spectrogram = norm_t(spectrogram)
@@ -73,17 +75,33 @@ class MonteSingleFileTester(BaseExperiment):
     def run(self):
         log = logging.getLogger(__name__)
         run_params = super().get_run_params()
-        model_save_path = run_params.get(R.MODEL_SAVE_PATH)
-        model, _ = load_working_model(run_params, model_save_path)
         config = Config()
-        target_file = "/media/andrius/FastBoi/bakis_data/final22k/train/Adele - Hello.mp3"
+        model_save_path = run_params.get(R.MODEL_SAVE_PATH)
+        model, files = load_working_model(run_params, model_save_path)
+
+        # loading oneshot model
+        # model = model.to("cpu")
+        # centroids = model.classification[-1].centroids.data
+        # new_centroids = torch.cat((centroids.to("cpu"), torch.zeros((1, centroids.shape[-1]))))
+        # masses = model.classification[-1].cluster_mass.data
+        # masses = torch.cat((masses, torch.tensor(0.02877584192901845).view(-1)))
+
+        # model.classification[-1].centroids = torch.nn.Parameter(torch.zeros(new_centroids.shape[-2],centroids.shape[-1]))
+        # model.classification[-1].cluster_mass = torch.nn.Parameter(torch.zeros(masses.shape))
+        # model.load_state_dict(torch.load("temp_oneshot.pth"))
+        # model = model.to(config.run_device)
+
+        target_file = "/media/andrius/FastBoi/test_samples/The Strokes -  Someday (FULL).mp3"
+        
+        # target_file = "/media/andrius/FastBoi/bakis_data/final22k/train/Adele - Hello.mp3"
         # target_file = "/media/andrius/FastBoi/bakis_data/final22k/train/New Order - Blue Monday.mp3"
         if not os.path.isfile(target_file):
             raise RuntimeError(f"Requested file not found at: {target_file}")
+
         file_info = torchaudio.backend.sox_io_backend.info(target_file)
         w_len = 2**17
         topn = 10
-        generation_strategy = RandomSubsampleWindowGenerationStrategy(window_len=w_len, average_hop=int((w_len)*0.01))
+        generation_strategy = RandomSubsampleWindowGenerationStrategy(window_len=w_len, average_hop=int((w_len)*0.01), overread=2.5)
         base_dataset = DiskDataset(
             target_file,
             file_limit=0,
@@ -93,7 +111,13 @@ class MonteSingleFileTester(BaseExperiment):
             storage_type=SingleFileDiskStorage,
             sox_effects=FileLoadingSoxEffects(initial_sample_rate=file_info.sample_rate, final_sample_rate=config.sample_rate, random_pre_resampling=False)
         )
-        files = base_dataset.get_file_list()
+        # base_dataset = MemoryFileDiskStorage(
+        #     target_file,
+        #     format="mp3",
+        #     run_params=run_params,
+        #     features=["data"],
+        #     window_generation_strategy=generation_strategy
+        # )
         loader = DataLoader(base_dataset, shuffle=False, batch_size=64, num_workers=6)
         num_batches = len(loader)
         print(f"Files: {len(files)}")
@@ -110,9 +134,10 @@ class MonteSingleFileTester(BaseExperiment):
             model.to(config.run_device)
             model.train(mode=False)
             for i, data in pbar:
-                xb, yb = data["samples"], data["onehot"]
+                xb = data["samples"]
                 start_times = data["window_start"]
                 xb = xb.to(config.run_device)
+                yb = data["onehot"]
                 yb = yb.to(config.run_device)
                 spectrogram = spectrogram_generator.generate_spectrogram(
                     xb, narrow_to=128,
@@ -121,9 +146,10 @@ class MonteSingleFileTester(BaseExperiment):
                 )
                 outputs = model(spectrogram).detach()
                 output_cat = outputs
+                # yb = torch.full((outputs.shape[-2],), 9500).to(config.run_device)
 
                 top_cats = output_cat.topk(topn)
-                target_expanded = yb.expand_as(top_cats.indices).detach()
+                target_expanded = yb.view((-1,1)).expand_as(top_cats.indices).detach()
                 topk_correct = target_expanded.eq(top_cats.indices)
                 predicted_correctly_topk += topk_correct.sum().item()
                 correct_topk = topk_correct.sum(dim=-1)

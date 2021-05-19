@@ -1,3 +1,4 @@
+from numpy import isin
 from .base_dataset import BaseDataset
 from typing import Generator, List
 from .disk_storage import SpecificAudioFileWindow, RandomAudioFileWindow, UniformReadWindowGenerationStrategy, RandomSubsampleWindowGenerationStrategy
@@ -83,6 +84,13 @@ class MemoryFileDiskStorage(BaseDataset):
         if(isinstance(window, SpecificAudioFileWindow)):
             offset = window.window_start
             duration = window.window_end - window.window_start
+        elif isinstance(window, RandomAudioFileWindow):
+            metadata = torchaudio.backend.sox_io_backend.info(window.get_filepath())
+            file_duration = metadata.num_frames
+            duration = window.window_len
+            # max_offset = min(30, (file_duration-duration))
+            max_offset = file_duration-duration-1
+            offset = int(random.uniform(0.0, max_offset))
         else:
             raise AttributeError(f"Unknown type of window: {type(window)}")
         win_len_frames = int(duration)

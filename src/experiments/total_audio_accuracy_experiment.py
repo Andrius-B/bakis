@@ -24,7 +24,7 @@ class TotalAudioAccuracyExperiment(BaseExperiment):
             R.DISKDS_NUM_FILES: '9500',
             R.BATCH_SIZE_TRAIN: '75',
             R.CLUSTERING_MODEL: 'mass',
-            R.MODEL_SAVE_PATH: 'zoo/9500massv2',
+            R.MODEL_SAVE_PATH: 'zoo/9500massv3',
             R.EPOCHS: '40',
             R.BATCH_SIZE_VALIDATION: '150',
             R.TRAINING_VALIDATION_MODE: 'epoch',
@@ -36,6 +36,7 @@ class TotalAudioAccuracyExperiment(BaseExperiment):
             R.DISKDS_TRAIN_FEATURES: 'data,onehot',
             R.DISKDS_VALID_FEATURES: 'data,onehot',
             R.DISKDS_USE_SOX_RANDOM_PRE_SAMPLING_TRAIN: 'True',
+            R.DISKDS_USE_DATASET_INDEX: 'False'
         }
 
     def run(self):

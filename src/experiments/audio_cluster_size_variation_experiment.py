@@ -70,10 +70,12 @@ class AudioClusterSizeVariationExperiment(BaseExperiment):
             'other_correct_samples': [],
             'other_top5_correct_samples': [],
             'cluster_reduction': [],
+            'cluster_size': [],
         }
         original_target_cluster_mass = self.model.classification[-1].cluster_mass[song_under_test_idx].item()
-        for size_reduction in np.linspace(0, 0.3, 30):
-            self.model.classification[-1].cluster_mass[song_under_test_idx] = original_target_cluster_mass - size_reduction * original_target_cluster_mass
+        for size_reduction in np.linspace(0, 1, 100):
+            reduced_cluster_size = original_target_cluster_mass - size_reduction * original_target_cluster_mass
+            self.model.classification[-1].cluster_mass[song_under_test_idx] = reduced_cluster_size
             output_data = self.calculate_total_accuracy(self.model)
             df = pd.DataFrame(data=output_data)
             df.set_index('idx')
@@ -97,6 +99,7 @@ class AudioClusterSizeVariationExperiment(BaseExperiment):
             accuracy_data['other_correct_samples'].append(round(other_correct_samples))
             accuracy_data['other_top5_correct_samples'].append(round(other_top5_correct_samples))
             accuracy_data['cluster_reduction'].append(size_reduction)
+            accuracy_data['cluster_size'].append(reduced_cluster_size)
         log.info(f"Accuract data: {accuracy_data}")
         return accuracy_data
             
